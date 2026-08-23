@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Event Dashboard | AI Photo Platform</title>
+    <!-- Tailwind CSS for rapid styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 font-sans text-gray-800">
+
+    <!-- Navigation -->
+    <nav class="bg-white shadow-sm px-6 py-4 flex justify-between items-center">
+        <h1 class="text-xl font-bold text-blue-600">SnapSync AI</h1>
+        <div class="flex gap-4">
+            <button class="text-gray-500 hover:text-blue-600">Dashboard</button>
+            <button class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700">Host Upload</button>
+        </div>
+    </nav>
+
+    <!-- Event Header -->
+    <header class="max-w-5xl mx-auto mt-8 px-6">
+        <div class="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-2xl p-8 text-white shadow-lg flex justify-between items-center">
+            <div>
+                <span class="bg-blue-500/30 text-blue-100 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wide">Protected Event</span>
+                <h2 class="text-3xl font-bold mt-3">TechNova Conference 2026</h2>
+                <p class="text-blue-100 mt-2">Waikato Events Center • July 27, 2026</p>
+            </div>
+            <div class="bg-white p-2 rounded-lg shadow-sm hidden md:block">
+                <!-- Placeholder for QR Code -->
+                <div class="w-24 h-24 bg-gray-200 border-2 border-dashed border-gray-300 flex items-center justify-center text-xs text-gray-500 text-center">QR Code<br>Generated</div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Live Insights & Search Section -->
+    <main class="max-w-5xl mx-auto mt-8 px-6 grid grid-cols-1 md:grid-cols-3 gap-8">
+        
+        <!-- Live Insights (DynamoDB & SQS Simulation) -->
+        <div class="md:col-span-1 space-y-4">
+            <h3 class="text-lg font-bold text-gray-700">Live Insights</h3>
+            
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
+                <p class="text-sm text-gray-500 font-medium">Total Photos (DynamoDB)</p>
+                <p class="text-3xl font-bold text-gray-800 mt-1">1,248</p>
+            </div>
+
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center">
+                <div>
+                    <p class="text-sm text-gray-500 font-medium">Processing Queue (SQS)</p>
+                    <p class="text-3xl font-bold text-orange-500 mt-1" id="queue-count">14</p>
+                </div>
+                <div class="animate-spin h-5 w-5 border-2 border-orange-500 border-t-transparent rounded-full"></div>
+            </div>
+        </div>
+
+        <!-- AI Facial Search Engine -->
+        <div class="md:col-span-2 bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <h3 class="text-lg font-bold text-gray-700">AI Selfie Search</h3>
+            <p class="text-gray-500 text-sm mt-1">Upload a selfie to instantly find all your photos from this event using our facial recognition engine.</p>
+            
+            <div class="mt-6 border-2 border-dashed border-gray-300 rounded-xl p-10 text-center hover:bg-gray-50 transition cursor-pointer" onclick="simulateSearch()">
+                <div class="mx-auto w-12 h-12 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mb-3">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                </div>
+                <p class="text-gray-700 font-medium">Click to Upload Selfie</p>
+                <p class="text-gray-400 text-xs mt-1">Simulates AWS Lambda vector matching</p>
+            </div>
+
+            <!-- Search Results Simulation -->
+            <div id="results-area" class="hidden mt-8">
+                <h4 class="text-sm font-bold text-green-600 mb-3 flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
+                    Face Match Found! (3 Photos)
+                </h4>
+                <div class="grid grid-cols-3 gap-4">
+                    <div class="h-32 bg-gray-200 rounded-lg shadow-inner flex items-center justify-center text-xs text-gray-400">CloudFront<br>Delivery</div>
+                    <div class="h-32 bg-gray-200 rounded-lg shadow-inner flex items-center justify-center text-xs text-gray-400">CloudFront<br>Delivery</div>
+                    <div class="h-32 bg-gray-200 rounded-lg shadow-inner flex items-center justify-center text-xs text-gray-400">CloudFront<br>Delivery</div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Simulates the SQS queue draining over time
+        setInterval(() => {
+            const queueEl = document.getElementById('queue-count');
+            let count = parseInt(queueEl.innerText);
+            if(count > 0) queueEl.innerText = count - 1;
+        }, 3500);
+
+        // Simulates the Lambda AI Search delay
+        function simulateSearch() {
+            const btn = event.currentTarget;
+            btn.innerHTML = `<div class="animate-pulse text-blue-600 font-medium">Extracting 128-d face vector...</div>`;
+            
+            setTimeout(() => {
+                btn.style.display = 'none';
+                document.getElementById('results-area').classList.remove('hidden');
+            }, 2000);
+        }
+    </script>
+</body>
+</html>
