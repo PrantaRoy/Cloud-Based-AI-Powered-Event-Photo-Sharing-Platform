@@ -1,0 +1,468 @@
+{
+	"info": {
+		"_postman_id": "6f2a7e2a-3b1a-4b7a-9a1a-1e2b3c4d5e6f",
+		"name": "EventPro API",
+		"description": "REST API for EventPro: user authentication (register, login, logout, password reset/change, profile) and event management (CRUD, participants, photo upload).\n\nRun requests top-to-bottom within a folder for the smoothest flow — Login/Register auto-save the bearer token, Create Event auto-saves `event_id`, and Register for Event auto-saves `participant_id` into collection variables so later requests just work.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{ "key": "token", "value": "{{token}}", "type": "string" }
+		]
+	},
+	"variable": [
+		{ "key": "base_url", "value": "http://127.0.0.1:8000/api", "type": "string" },
+		{ "key": "token", "value": "", "type": "string" },
+		{ "key": "user_id", "value": "", "type": "string" },
+		{ "key": "event_id", "value": "", "type": "string" },
+		{ "key": "participant_id", "value": "", "type": "string" }
+	],
+	"item": [
+		{
+			"name": "Auth",
+			"item": [
+				{
+					"name": "Register",
+					"request": {
+						"auth": { "type": "noauth" },
+						"method": "POST",
+						"header": [
+							{ "key": "Accept", "value": "application/json" },
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Jane Doe\",\n  \"email\": \"jane.doe@example.com\",\n  \"password\": \"Password123!\",\n  \"password_confirmation\": \"Password123!\"\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": {
+							"raw": "{{base_url}}/register",
+							"host": [ "{{base_url}}" ],
+							"path": [ "register" ]
+						},
+						"description": "Creates a new user (role defaults to `visitor`), auto-creates their personal team, and returns a bearer token."
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const json = pm.response.json();",
+									"    pm.collectionVariables.set('token', json.token);",
+									"    pm.collectionVariables.set('user_id', json.user.id);",
+									"}"
+								]
+							}
+						}
+					],
+					"response": []
+				},
+				{
+					"name": "Login",
+					"request": {
+						"auth": { "type": "noauth" },
+						"method": "POST",
+						"header": [
+							{ "key": "Accept", "value": "application/json" },
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"jane.doe@example.com\",\n  \"password\": \"Password123!\"\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": {
+							"raw": "{{base_url}}/login",
+							"host": [ "{{base_url}}" ],
+							"path": [ "login" ]
+						},
+						"description": "Authenticates with email/password and returns a new bearer token. Rate limited to 5 attempts/minute per email+IP."
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const json = pm.response.json();",
+									"    pm.collectionVariables.set('token', json.token);",
+									"    pm.collectionVariables.set('user_id', json.user.id);",
+									"}"
+								]
+							}
+						}
+					],
+					"response": []
+				},
+				{
+					"name": "Logout",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Accept", "value": "application/json" }
+						],
+						"url": {
+							"raw": "{{base_url}}/logout",
+							"host": [ "{{base_url}}" ],
+							"path": [ "logout" ]
+						},
+						"description": "Revokes the bearer token used on this request."
+					},
+					"response": []
+				},
+				{
+					"name": "Forgot Password",
+					"request": {
+						"auth": { "type": "noauth" },
+						"method": "POST",
+						"header": [
+							{ "key": "Accept", "value": "application/json" },
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"jane.doe@example.com\"\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": {
+							"raw": "{{base_url}}/forgot-password",
+							"host": [ "{{base_url}}" ],
+							"path": [ "forgot-password" ]
+						},
+						"description": "Sends a password reset link. In local dev (MAIL_MAILER=log) the email is written to storage/logs/laravel.log instead of being sent — grab the token from there for the Reset Password request."
+					},
+					"response": []
+				},
+				{
+					"name": "Reset Password",
+					"request": {
+						"auth": { "type": "noauth" },
+						"method": "POST",
+						"header": [
+							{ "key": "Accept", "value": "application/json" },
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"jane.doe@example.com\",\n  \"token\": \"paste-token-from-log-here\",\n  \"password\": \"NewPassword123!\",\n  \"password_confirmation\": \"NewPassword123!\"\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": {
+							"raw": "{{base_url}}/reset-password",
+							"host": [ "{{base_url}}" ],
+							"path": [ "reset-password" ]
+						},
+						"description": "Consumes the (single-use) reset token from the Forgot Password email/log and sets a new password."
+					},
+					"response": []
+				},
+				{
+					"name": "Change Password",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{ "key": "Accept", "value": "application/json" },
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"current_password\": \"Password123!\",\n  \"password\": \"NewPassword123!\",\n  \"password_confirmation\": \"NewPassword123!\"\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": {
+							"raw": "{{base_url}}/password",
+							"host": [ "{{base_url}}" ],
+							"path": [ "password" ]
+						},
+						"description": "Changes the authenticated user's password (requires current password). Rate limited to 6 attempts/minute."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Profile",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Accept", "value": "application/json" }
+						],
+						"url": {
+							"raw": "{{base_url}}/profile",
+							"host": [ "{{base_url}}" ],
+							"path": [ "profile" ]
+						},
+						"description": "Returns the authenticated user's profile."
+					},
+					"response": []
+				},
+				{
+					"name": "Update Profile",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{ "key": "Accept", "value": "application/json" },
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Jane R. Doe\",\n  \"email\": \"jane.doe@example.com\"\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": {
+							"raw": "{{base_url}}/profile",
+							"host": [ "{{base_url}}" ],
+							"path": [ "profile" ]
+						},
+						"description": "Updates name/email. Changing the email clears email_verified_at, requiring re-verification."
+					},
+					"response": []
+				},
+				{
+					"name": "Update Profile Photo",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Accept", "value": "application/json" }
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{ "key": "photo", "type": "file", "src": [] }
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/profile/photo",
+							"host": [ "{{base_url}}" ],
+							"path": [ "profile", "photo" ]
+						},
+						"description": "Uploads/replaces the user's profile photo (image, max 5MB). The previous photo is deleted from storage."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Events",
+			"item": [
+				{
+					"name": "List Events",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Accept", "value": "application/json" }
+						],
+						"url": {
+							"raw": "{{base_url}}/events?per_page=15",
+							"host": [ "{{base_url}}" ],
+							"path": [ "events" ],
+							"query": [
+								{ "key": "per_page", "value": "15" }
+							]
+						},
+						"description": "Lists events visible to the authenticated user: public/protected events plus any private events where the user is the organiser or a registered participant (admins see everything)."
+					},
+					"response": []
+				},
+				{
+					"name": "Create Event",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Accept", "value": "application/json" },
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Product Launch Meetup\",\n  \"event_date\": \"2026-09-15\",\n  \"venue\": \"Downtown Conference Hall\",\n  \"privacy\": \"public\",\n  \"start_time\": \"2026-09-15 18:00:00\",\n  \"end_time\": \"2026-09-15 21:00:00\",\n  \"reg_auto_approve\": true\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": {
+							"raw": "{{base_url}}/events",
+							"host": [ "{{base_url}}" ],
+							"path": [ "events" ]
+						},
+						"description": "Any authenticated user can create an event; the creator automatically becomes its organiser."
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const json = pm.response.json();",
+									"    pm.collectionVariables.set('event_id', json.data.id);",
+									"}"
+								]
+							}
+						}
+					],
+					"response": []
+				},
+				{
+					"name": "Get Event",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Accept", "value": "application/json" }
+						],
+						"url": {
+							"raw": "{{base_url}}/events/{{event_id}}",
+							"host": [ "{{base_url}}" ],
+							"path": [ "events", "{{event_id}}" ]
+						},
+						"description": "Full event details, including organiser/creator info and participant/media counts. 403 if the event is private and the requester isn't the organiser, admin, or a registered participant."
+					},
+					"response": []
+				},
+				{
+					"name": "Update Event",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{ "key": "Accept", "value": "application/json" },
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"venue\": \"Updated Venue Name\",\n  \"status\": \"scheduled\"\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": {
+							"raw": "{{base_url}}/events/{{event_id}}",
+							"host": [ "{{base_url}}" ],
+							"path": [ "events", "{{event_id}}" ]
+						},
+						"description": "Organiser or admin only."
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Event",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{ "key": "Accept", "value": "application/json" }
+						],
+						"url": {
+							"raw": "{{base_url}}/events/{{event_id}}",
+							"host": [ "{{base_url}}" ],
+							"path": [ "events", "{{event_id}}" ]
+						},
+						"description": "Organiser or admin only."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Event Participants",
+			"item": [
+				{
+					"name": "List Participants",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Accept", "value": "application/json" }
+						],
+						"url": {
+							"raw": "{{base_url}}/events/{{event_id}}/participants",
+							"host": [ "{{base_url}}" ],
+							"path": [ "events", "{{event_id}}", "participants" ]
+						},
+						"description": "Organiser or admin only."
+					},
+					"response": []
+				},
+				{
+					"name": "Register for Event",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Accept", "value": "application/json" },
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email_notify\": true\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": {
+							"raw": "{{base_url}}/events/{{event_id}}/participants",
+							"host": [ "{{base_url}}" ],
+							"path": [ "events", "{{event_id}}", "participants" ]
+						},
+						"description": "Self-registers the authenticated user as a participant. Auto-approved if the event has reg_auto_approve enabled and isn't 'protected'; otherwise left pending for organiser approval. 422 if already registered."
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const json = pm.response.json();",
+									"    pm.collectionVariables.set('participant_id', json.data.id);",
+									"}"
+								]
+							}
+						}
+					],
+					"response": []
+				},
+				{
+					"name": "Approve/Reject Participant",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{ "key": "Accept", "value": "application/json" },
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"status\": \"approved\"\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": {
+							"raw": "{{base_url}}/events/{{event_id}}/participants/{{participant_id}}",
+							"host": [ "{{base_url}}" ],
+							"path": [ "events", "{{event_id}}", "participants", "{{participant_id}}" ]
+						},
+						"description": "Organiser or admin only. `status` must be `approved` or `rejected`."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Event Media",
+			"item": [
+				{
+					"name": "Upload Event Photo",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Accept", "value": "application/json" }
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{ "key": "photo", "type": "file", "src": [] }
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/events/{{event_id}}/photos",
+							"host": [ "{{base_url}}" ],
+							"path": [ "events", "{{event_id}}", "photos" ]
+						},
+						"description": "Uploads a photo to the event gallery (image, max 10MB). Allowed for the organiser/admin, or a participant whose registration status is 'approved'."
+					},
+					"response": []
+				}
+			]
+		}
+	]
+}

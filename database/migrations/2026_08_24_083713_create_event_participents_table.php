@@ -19,6 +19,7 @@ return new class extends Migration
             $table->timestamp('registered_at')->nullable();
             $table->timestamp('approved_at')->nullable();
             $table->boolean('email_notify')->default(false);
+            $table->boolean('is_organizer')->default(false);
             $table->timestamps(); 
         });
     }
