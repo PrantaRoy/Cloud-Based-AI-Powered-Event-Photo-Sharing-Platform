@@ -11,43 +11,71 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
+use Throwable;
 
 class AuthController extends Controller
 {
     public function register(Request $request, CreateNewUser $createNewUser)
     {
-        $user = $createNewUser->create($request->all())->refresh();
+        try {
+            $user = $createNewUser->create($request->all())->refresh();
 
-        $token = $user->createToken('api')->plainTextToken;
+            $token = $user->createToken('api')->plainTextToken;
 
-        return response()->json([
-            'user' => new UserProfileResource($user),
-            'token' => $token,
-        ], Response::HTTP_CREATED);
+            return $this->apiSuccess('Registration successful', [
+                'user' => new UserProfileResource($user),
+                'token' => $token,
+            ], Response::HTTP_CREATED);
+        } catch (ValidationException $e) {
+            return $this->apiError($e->getMessage(), 422, $e->errors());
+        } catch (HttpExceptionInterface $e) {
+            return $this->apiError($e->getMessage() ?: 'Request failed', $e->getStatusCode());
+        } catch (Throwable $e) {
+            report($e);
+
+            return $this->apiError($this->apiExceptionMessage($e, 'Registration failed'));
+        }
     }
 
     public function login(LoginRequest $request)
     {
-        $user = User::where('email', $request->validated('email'))->first();
+        try {
+            $user = User::where('email', $request->validated('email'))->first();
 
-        if (! $user || ! Hash::check($request->validated('password'), $user->password)) {
-            throw ValidationException::withMessages([
-                'email' => [trans('auth.failed')],
+            if (! $user || ! Hash::check($request->validated('password'), $user->password)) {
+                throw ValidationException::withMessages([
+                    'email' => [trans('auth.failed')],
+                ]);
+            }
+
+            $token = $user->createToken('api')->plainTextToken;
+
+            return $this->apiSuccess('Login successful', [
+                'user' => new UserProfileResource($user),
+                'token' => $token,
             ]);
+        } catch (ValidationException $e) {
+            return $this->apiError($e->getMessage(), 422, $e->errors());
+        } catch (HttpExceptionInterface $e) {
+            return $this->apiError($e->getMessage() ?: 'Request failed', $e->getStatusCode());
+        } catch (Throwable $e) {
+            report($e);
+
+            return $this->apiError($this->apiExceptionMessage($e, 'Login failed'));
         }
-
-        $token = $user->createToken('api')->plainTextToken;
-
-        return response()->json([
-            'user' => new UserProfileResource($user),
-            'token' => $token,
-        ]);
     }
 
     public function logout(Request $request)
     {
-        $request->user()->currentAccessToken()->delete();
+        try {
+            $request->user()->currentAccessToken()->delete();
 
-        return response()->noContent();
+            return $this->apiSuccess('Logout successful');
+        } catch (Throwable $e) {
+            report($e);
+
+            return $this->apiError($this->apiExceptionMessage($e, 'Logout failed'));
+        }
     }
 }
