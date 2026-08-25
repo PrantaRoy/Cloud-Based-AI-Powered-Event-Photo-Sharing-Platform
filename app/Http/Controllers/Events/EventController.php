@@ -5,12 +5,14 @@ namespace App\Http\Controllers\Events;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Events\StoreEventRequest;
 use App\Http\Requests\Events\UpdateEventRequest;
+use App\Http\Requests\Events\UpdateEventThumbnailRequest;
 use App\Http\Resources\EventResource;
 use App\Models\Event;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Throwable;
@@ -22,20 +24,29 @@ class EventController extends Controller
         try {
             $user = $request->user();
 
+            $validated = $request->validate([
+                'status_group' => ['sometimes', 'string', 'in:upcoming,active,archived'],
+                'scope' => ['sometimes', 'string', 'in:all,mine,organised'],
+            ]);
+
+            $scope = $validated['scope'] ?? 'all';
+
             $events = Event::query()
-                ->with('organiser')
+                ->with(['organiser', 'creator'])
                 ->withCount(['participants', 'media'])
-                ->when($user->role !== 'admin', function ($query) use ($user) {
-                    $query->where(function ($query) use ($user) {
-                        $query->where('privacy', '!=', 'private')
-                            ->orWhere('organiser_id', $user->id)
-                            ->orWhereHas('participants', fn ($query) => $query->where('user_id', $user->id));
-                    });
+                ->when($scope === 'all', fn ($query) => $query->visibleTo($user))
+                ->when($scope === 'organised', fn ($query) => $query->where('organiser_id', $user->id))
+                ->when($scope === 'mine', function ($query) use ($user) {
+                    $query->whereHas('participants', fn ($query) => $query->where('user_id', $user->id)->where('status', '!=', 'rejected'))
+                        ->with(['participants' => fn ($query) => $query->where('user_id', $user->id)]);
                 })
+                ->when(isset($validated['status_group']), fn ($query) => $query->whereIn('status', Event::STATUS_GROUPS[$validated['status_group']]))
                 ->latest('event_date')
                 ->paginate();
 
             return $this->apiSuccess('Event List', EventResource::collection($events));
+        } catch (ValidationException $e) {
+            return $this->apiError($e->getMessage(), 422, $e->errors());
         } catch (Throwable $e) {
             report($e);
 
@@ -131,6 +142,33 @@ class EventController extends Controller
             report($e);
 
             return $this->apiError($this->apiExceptionMessage($e, 'Unable to delete event'));
+        }
+    }
+
+    public function updateThumbnail(UpdateEventThumbnailRequest $request, Event $event)
+    {
+        try {
+            Gate::authorize('update', $event);
+
+            if ($event->thumbnail_s3_path) {
+                Storage::delete($event->thumbnail_s3_path);
+            }
+
+            $path = $request->file('thumbnail')->store("event-thumbnails/{$event->id}");
+
+            $event->update(['thumbnail_s3_path' => $path]);
+
+            return $this->apiSuccess('Event thumbnail updated successfully', new EventResource($event->load('organiser')));
+        } catch (ValidationException $e) {
+            return $this->apiError($e->getMessage(), 422, $e->errors());
+        } catch (AuthorizationException $e) {
+            return $this->apiError($e->getMessage(), 403);
+        } catch (HttpExceptionInterface $e) {
+            return $this->apiError($e->getMessage() ?: 'Request failed', $e->getStatusCode());
+        } catch (Throwable $e) {
+            report($e);
+
+            return $this->apiError($this->apiExceptionMessage($e, 'Unable to update event thumbnail'));
         }
     }
 }

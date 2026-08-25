@@ -3,6 +3,7 @@
 namespace App\Policies;
 
 use App\Models\Event;
+use App\Models\EventMedia;
 use App\Models\User;
 
 class EventPolicy
@@ -62,6 +63,15 @@ class EventPolicy
             ->where('user_id', $user->id)
             ->where('status', 'approved')
             ->exists();
+    }
+
+    public function deleteMedia(User $user, Event $event, EventMedia $media): bool
+    {
+        if ($this->isOrganiser($user, $event)) {
+            return true;
+        }
+
+        return $media->uploaded_by === $user->id;
     }
 
     protected function isOrganiser(User $user, Event $event): bool

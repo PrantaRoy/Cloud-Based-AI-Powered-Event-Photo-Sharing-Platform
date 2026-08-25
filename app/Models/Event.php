@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Database\Factories\EventFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -22,11 +23,18 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'created_by',
     'reg_auto_approve',
     'organiser_id',
+    'thumbnail_s3_path',
 ])]
 class Event extends Model
 {
     /** @use HasFactory<EventFactory> */
     use HasFactory;
+
+    public const STATUS_GROUPS = [
+        'upcoming' => ['pending', 'scheduled'],
+        'active' => ['active'],
+        'archived' => ['finished', 'cancelled', 'archived'],
+    ];
 
     protected function casts(): array
     {
@@ -36,6 +44,19 @@ class Event extends Model
             'end_time' => 'datetime',
             'reg_auto_approve' => 'boolean',
         ];
+    }
+
+    public function scopeVisibleTo(Builder $query, User $user): Builder
+    {
+        if ($user->role === 'admin') {
+            return $query;
+        }
+
+        return $query->where(function (Builder $query) use ($user) {
+            $query->where('privacy', '!=', 'private')
+                ->orWhere('organiser_id', $user->id)
+                ->orWhereHas('participants', fn ($query) => $query->where('user_id', $user->id));
+        });
     }
 
     public function organiser(): BelongsTo

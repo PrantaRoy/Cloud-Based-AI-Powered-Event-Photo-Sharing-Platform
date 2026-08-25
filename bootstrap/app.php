@@ -9,6 +9,7 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -37,4 +38,19 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );
+
+        // FormRequest validation fails before controllers' own try/catch
+        // blocks run, so it bypasses their apiError() formatting. Render
+        // it in the same {status, statusCode, message, data} envelope as
+        // every other API response.
+        $exceptions->render(function (ValidationException $e, Request $request) {
+            if ($request->is('api/*')) {
+                return response()->json([
+                    'status' => false,
+                    'statusCode' => 422,
+                    'message' => $e->getMessage(),
+                    'data' => $e->errors(),
+                ], 422);
+            }
+        });
     })->create();
