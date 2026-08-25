@@ -1,0 +1,48 @@
+import type { UserSummary } from './user'
+
+// The DB enum per the backend plan: pending|scheduled|active|finished|cancelled|archived
+export type EventStatus = 'pending' | 'scheduled' | 'active' | 'finished' | 'cancelled' | 'archived'
+
+export type EventStatusGroup = 'upcoming' | 'active' | 'archived'
+
+export type EventScope = 'all' | 'mine' | 'organised'
+
+// Privacy values aren't enumerated in the API contract - kept as a plain
+// string so the UI doesn't hard-fail if the backend accepts more than the
+// two values the create/edit forms currently offer (public/private).
+export type EventPrivacy = string
+
+// EventResource
+export interface EventResource {
+  id: number
+  name: string
+  event_date: string
+  venue: string
+  longitude: number | null
+  latitude: number | null
+  privacy: EventPrivacy
+  status: EventStatus
+  start_time: string | null
+  end_time: string | null
+  reg_auto_approve: boolean
+  thumbnail_url: string | null
+  my_registered_at: string | null
+  organiser: UserSummary
+  creator: UserSummary
+  participants_count: number
+  media_count: number
+  created_at: string
+  updated_at: string
+}
+
+export interface EventFormData {
+  name: string
+  event_date: string
+  venue: string
+  privacy: EventPrivacy
+  longitude?: number | null
+  latitude?: number | null
+  start_time?: string | null
+  end_time?: string | null
+  reg_auto_approve?: boolean
+}
