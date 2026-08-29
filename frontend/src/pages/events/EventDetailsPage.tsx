@@ -6,6 +6,7 @@ import { Spinner } from '../../components/common/Spinner'
 import { EmptyState } from '../../components/common/EmptyState'
 import { PhotoGrid } from '../../components/photos/PhotoGrid'
 import { PhotoUploadButton } from '../../components/photos/PhotoUploadButton'
+import { EventShareButton } from '../../components/events/EventShareButton'
 import { getEvent } from '../../api/events'
 import { deleteEventPhoto, listEventPhotos, uploadEventPhoto } from '../../api/media'
 import { joinEvent } from '../../api/participants'
@@ -104,7 +105,7 @@ export function EventDetailsPage() {
           <p className="text-sm text-gray-500">
             {event.participants_count} participants · {event.media_count} photos
           </p>
-          <div className="mt-2">
+          <div className="mt-2 flex flex-wrap items-center gap-2">
             {event.my_registered_at ? (
               <p className="text-sm text-gray-600">Joined on {formatDate(event.my_registered_at)}</p>
             ) : (
@@ -112,6 +113,11 @@ export function EventDetailsPage() {
                 {joining ? 'Joining…' : 'Join event'}
               </Button>
             )}
+            <EventShareButton
+              event={event}
+              label="Share / QR"
+              className="border border-gray-400 px-4 py-2 text-sm font-medium text-black hover:bg-gray-100 transition-colors"
+            />
           </div>
         </div>
       </div>

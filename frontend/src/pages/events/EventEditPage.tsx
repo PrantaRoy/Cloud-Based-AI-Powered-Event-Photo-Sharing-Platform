@@ -5,6 +5,7 @@ import { Input } from '../../components/common/Input'
 import { ErrorBanner } from '../../components/common/ErrorBanner'
 import { Spinner } from '../../components/common/Spinner'
 import { PhotoUploadButton } from '../../components/photos/PhotoUploadButton'
+import { EventShareButton } from '../../components/events/EventShareButton'
 import { deleteEvent, getEvent, updateEvent, updateEventThumbnail } from '../../api/events'
 import { ApiError } from '../../api/client'
 import type { EventResource } from '../../types/event'
@@ -95,7 +96,10 @@ export function EventEditPage() {
 
   return (
     <div className="flex max-w-xl flex-col gap-6">
-      <h1 className="text-lg font-semibold text-black">Edit event</h1>
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="text-lg font-semibold text-black">Edit event</h1>
+        <EventShareButton event={event} />
+      </div>
       {generalError && <ErrorBanner message={generalError} />}
 
       <div className="flex items-center gap-4 border border-gray-300 p-4">

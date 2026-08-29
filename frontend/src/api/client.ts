@@ -8,7 +8,14 @@ const TOKEN_STORAGE_KEY = 'eventpro_token'
 // Endpoints that must be called WITHOUT a bearer token - either there's no
 // token yet, or (per the plan) sending one is simply wrong for these public
 // auth actions.
-const UNAUTHENTICATED_PATHS = ['/login', '/register', '/check-email', '/forgot-password', '/reset-password']
+const UNAUTHENTICATED_PATHS = [
+  '/login',
+  '/register',
+  '/check-email',
+  '/forgot-password',
+  '/reset-password',
+  '/events/public',
+]
 
 function isUnauthenticatedPath(path: string): boolean {
   return UNAUTHENTICATED_PATHS.some((p) => path.startsWith(p))
@@ -17,12 +24,14 @@ function isUnauthenticatedPath(path: string): boolean {
 export class ApiError extends Error {
   statusCode: number
   fieldErrors: FieldErrors | null
+  data: unknown
 
-  constructor(message: string, statusCode: number, fieldErrors: FieldErrors | null = null) {
+  constructor(message: string, statusCode: number, fieldErrors: FieldErrors | null = null, data: unknown = null) {
     super(message)
     this.name = 'ApiError'
     this.statusCode = statusCode
     this.fieldErrors = fieldErrors
+    this.data = data
   }
 }
 
@@ -109,7 +118,7 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
       response.status === 422 && envelope?.data && typeof envelope.data === 'object'
         ? (envelope.data as FieldErrors)
         : null
-    throw new ApiError(message, response.status, fieldErrors)
+    throw new ApiError(message, response.status, fieldErrors, envelope?.data ?? null)
   }
 
   return (envelope?.data ?? null) as T

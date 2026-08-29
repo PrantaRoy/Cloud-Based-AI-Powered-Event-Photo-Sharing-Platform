@@ -8,6 +8,7 @@ import { SearchPhotosPage } from '../pages/dashboard/SearchPhotosPage'
 import { MyPhotosPage } from '../pages/dashboard/MyPhotosPage'
 import { EventDetailsPage } from '../pages/events/EventDetailsPage'
 import { EventEditPage } from '../pages/events/EventEditPage'
+import { PublicEventPage } from '../pages/events/PublicEventPage'
 import { AlbumDetailPage } from '../pages/albums/AlbumDetailPage'
 import { ProtectedRoute } from './ProtectedRoute'
 
@@ -15,6 +16,7 @@ export function AppRouter() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/e/:slug" element={<PublicEventPage />} />
       <Route
         path="/dashboard"
         element={

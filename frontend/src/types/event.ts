@@ -16,6 +16,10 @@ export type EventPrivacy = string
 export interface EventResource {
   id: number
   name: string
+  // Unique, immutable slug + the URLs derived from it (built by the backend).
+  slug: string
+  public_url: string
+  qr_code_url: string
   event_date: string
   venue: string
   longitude: number | null

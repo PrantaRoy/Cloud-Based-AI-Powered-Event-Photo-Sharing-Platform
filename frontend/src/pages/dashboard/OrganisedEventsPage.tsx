@@ -8,9 +8,11 @@ import { Spinner } from '../../components/common/Spinner'
 import { Button } from '../../components/common/Button'
 import { Modal } from '../../components/common/Modal'
 import { Input } from '../../components/common/Input'
+import { EventSharePanel } from '../../components/events/EventSharePanel'
 import { createEvent } from '../../api/events'
 import { ApiError } from '../../api/client'
 import type { FieldErrors } from '../../types/api'
+import type { EventResource } from '../../types/event'
 
 export function OrganisedEventsPage() {
   const navigate = useNavigate()
@@ -43,9 +45,9 @@ export function OrganisedEventsPage() {
       {showCreate && (
         <CreateEventModal
           onClose={() => setShowCreate(false)}
-          onCreated={(id) => {
+          onCreated={() => refetch()}
+          onEdit={(id) => {
             setShowCreate(false)
-            refetch()
             navigate(`/dashboard/events/organised/${id}/edit`)
           }}
         />
@@ -59,7 +61,15 @@ export function OrganisedEventsPage() {
 // though, an organiser could never populate this page (beyond seeded data),
 // and POST /api/events is in the documented API surface - so a minimal
 // creation modal is included here to make the page actually usable.
-function CreateEventModal({ onClose, onCreated }: { onClose: () => void; onCreated: (id: number) => void }) {
+function CreateEventModal({
+  onClose,
+  onCreated,
+  onEdit,
+}: {
+  onClose: () => void
+  onCreated: () => void
+  onEdit: (id: number) => void
+}) {
   const [name, setName] = useState('')
   const [eventDate, setEventDate] = useState('')
   const [venue, setVenue] = useState('')
@@ -67,6 +77,7 @@ function CreateEventModal({ onClose, onCreated }: { onClose: () => void; onCreat
   const [errors, setErrors] = useState<FieldErrors | null>(null)
   const [generalError, setGeneralError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [created, setCreated] = useState<EventResource | null>(null)
 
   async function handleSubmit() {
     setSaving(true)
@@ -74,7 +85,8 @@ function CreateEventModal({ onClose, onCreated }: { onClose: () => void; onCreat
     setErrors(null)
     try {
       const event = await createEvent({ name, event_date: eventDate, venue, privacy })
-      onCreated(event.id)
+      setCreated(event)
+      onCreated()
     } catch (err) {
       if (err instanceof ApiError) {
         setGeneralError(err.message)
@@ -85,6 +97,26 @@ function CreateEventModal({ onClose, onCreated }: { onClose: () => void; onCreat
     } finally {
       setSaving(false)
     }
+  }
+
+  if (created) {
+    return (
+      <Modal title="Event created" onClose={onClose}>
+        <div className="flex flex-col gap-4">
+          <p className="text-sm text-gray-600">
+            <span className="font-medium text-black">{created.name}</span> is ready. Share its link or QR code with
+            attendees.
+          </p>
+          <EventSharePanel event={created} />
+          <div className="flex justify-end gap-2 border-t border-gray-200 pt-3">
+            <Button variant="secondary" onClick={onClose}>
+              Done
+            </Button>
+            <Button onClick={() => onEdit(created.id)}>Edit event</Button>
+          </div>
+        </div>
+      </Modal>
+    )
   }
 
   return (

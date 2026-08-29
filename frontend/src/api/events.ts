@@ -21,6 +21,11 @@ export function getEvent(id: number | string): Promise<EventResource> {
   return apiRequest<EventResource>(`/events/${id}`)
 }
 
+// Unauthenticated lookup by slug, backing the public /e/:slug landing page.
+export function getPublicEvent(slug: string): Promise<EventResource> {
+  return apiRequest<EventResource>(`/events/public/${slug}`)
+}
+
 export function createEvent(payload: EventFormData): Promise<EventResource> {
   return apiRequest<EventResource>('/events', { method: 'POST', body: payload })
 }

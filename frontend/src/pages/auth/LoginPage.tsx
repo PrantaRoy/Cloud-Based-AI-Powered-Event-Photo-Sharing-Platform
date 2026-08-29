@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { SubmitEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { Button } from '../../components/common/Button'
 import { Input } from '../../components/common/Input'
 import { ErrorBanner } from '../../components/common/ErrorBanner'
@@ -12,7 +12,12 @@ type Step = 'email' | 'password'
 
 export function LoginPage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { login } = useAuth()
+
+  const from = (location.state as { from?: { pathname: string; search?: string } } | null)?.from
+  const redirectTo =
+    from && from.pathname !== '/login' ? from.pathname + (from.search ?? '') : '/dashboard/events'
   const [step, setStep] = useState<Step>('email')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -43,7 +48,7 @@ export function LoginPage() {
     setSubmitting(true)
     try {
       await login(email.trim(), password)
-      navigate('/dashboard/events', { replace: true })
+      navigate(redirectTo, { replace: true })
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Invalid credentials.')
     } finally {

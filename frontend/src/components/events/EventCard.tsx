@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import type { EventResource } from '../../types/event'
 import { formatDate } from '../../lib/format'
+import { EventShareButton } from './EventShareButton'
 
 export function EventCard({ event }: { event: EventResource }) {
   return (
@@ -17,13 +18,14 @@ export function EventCard({ event }: { event: EventResource }) {
         <p className="text-xs text-gray-600">{formatDate(event.event_date)}</p>
         <p className="text-xs text-gray-600">{event.venue}</p>
         <p className="text-xs text-gray-500">Organised by {event.organiser?.name ?? event.creator?.name}</p>
-        <div className="mt-auto pt-2">
+        <div className="mt-auto flex items-center gap-2 pt-2">
           <Link
             to={`/dashboard/events/${event.id}`}
             className="inline-block border border-gray-400 px-3 py-1.5 text-xs text-black hover:bg-gray-100"
           >
             Details
           </Link>
+          <EventShareButton event={event} />
         </div>
       </div>
     </div>

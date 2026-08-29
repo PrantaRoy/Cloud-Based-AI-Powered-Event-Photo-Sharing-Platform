@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import type { EventResource } from '../../types/event'
 import { formatDate } from '../../lib/format'
+import { EventShareButton } from './EventShareButton'
 
 export function EventsTable({ events }: { events: EventResource[] }) {
   return (
@@ -27,9 +28,18 @@ export function EventsTable({ events }: { events: EventResource[] }) {
               <td className="px-3 py-2 text-gray-700">{event.participants_count}</td>
               <td className="px-3 py-2 text-gray-700">{event.media_count}</td>
               <td className="px-3 py-2 text-right">
-                <Link to={`/dashboard/events/organised/${event.id}/edit`} className="text-sm text-black underline hover:no-underline">
-                  Edit
-                </Link>
+                <div className="flex items-center justify-end gap-3">
+                  <EventShareButton
+                    event={event}
+                    className="text-sm text-black underline hover:no-underline"
+                  />
+                  <Link
+                    to={`/dashboard/events/organised/${event.id}/edit`}
+                    className="text-sm text-black underline hover:no-underline"
+                  >
+                    Edit
+                  </Link>
+                </div>
               </td>
             </tr>
           ))}

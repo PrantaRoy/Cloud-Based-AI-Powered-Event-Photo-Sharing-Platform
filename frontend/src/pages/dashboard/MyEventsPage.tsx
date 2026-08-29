@@ -4,6 +4,7 @@ import { EmptyState } from '../../components/common/EmptyState'
 import { ErrorBanner } from '../../components/common/ErrorBanner'
 import { Spinner } from '../../components/common/Spinner'
 import { Button } from '../../components/common/Button'
+import { EventShareButton } from '../../components/events/EventShareButton'
 import { formatDate } from '../../lib/format'
 
 export function MyEventsPage() {
@@ -37,12 +38,15 @@ export function MyEventsPage() {
                   <p className="text-xs text-gray-500">Created by {event.creator?.name}</p>
                   {event.my_registered_at && <p className="text-xs text-gray-500">Joined on {formatDate(event.my_registered_at)}</p>}
                 </div>
-                <Link
-                  to={`/dashboard/events/${event.id}`}
-                  className="border border-gray-400 px-3 py-1.5 text-xs text-black hover:bg-gray-100"
-                >
-                  Details
-                </Link>
+                <div className="flex shrink-0 items-center gap-2">
+                  <EventShareButton event={event} />
+                  <Link
+                    to={`/dashboard/events/${event.id}`}
+                    className="border border-gray-400 px-3 py-1.5 text-xs text-black hover:bg-gray-100"
+                  >
+                    Details
+                  </Link>
+                </div>
               </div>
             ))}
           </div>
