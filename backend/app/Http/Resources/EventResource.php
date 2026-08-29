@@ -16,6 +16,9 @@ class EventResource extends JsonResource
         return [
             'id' => $this->id,
             'name' => $this->name,
+            'slug' => $this->slug,
+            'public_url' => rtrim((string) config('app.frontend_url'), '/').'/e/'.$this->slug,
+            'qr_code_url' => route('events.qr', $this->slug),
             'event_date' => $this->event_date,
             'venue' => $this->venue,
             'longitude' => $this->longitude,

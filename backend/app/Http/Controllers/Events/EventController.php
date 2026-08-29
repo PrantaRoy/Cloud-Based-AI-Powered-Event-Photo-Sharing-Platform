@@ -67,7 +67,7 @@ class EventController extends Controller
 
             return $this->apiSuccess(
                 'Event created successfully',
-                new EventResource($event->load('organiser')),
+                new EventResource($event->load('organiser')->loadCount(['participants', 'media'])),
                 Response::HTTP_CREATED
             );
         } catch (ValidationException $e) {

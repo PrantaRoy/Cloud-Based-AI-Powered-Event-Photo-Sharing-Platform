@@ -8,6 +8,8 @@ use App\Http\Controllers\Auth\ProfileController;
 use App\Http\Controllers\Events\EventController;
 use App\Http\Controllers\Events\EventMediaController;
 use App\Http\Controllers\Events\EventParticipentController;
+use App\Http\Controllers\Events\EventQrController;
+use App\Http\Controllers\Events\PublicEventController;
 use App\Http\Controllers\PhotoSearchController;
 use Illuminate\Support\Facades\Route;
 
@@ -16,6 +18,9 @@ Route::post('login', [AuthController::class, 'login'])->middleware('throttle:log
 Route::post('forgot-password', [PasswordController::class, 'forgotPassword'])->middleware('throttle:6,1')->name('api.password.forgot');
 Route::post('reset-password', [PasswordController::class, 'reset'])->middleware('throttle:6,1')->name('api.password.reset');
 Route::post('check-email', [EmailCheckController::class, 'check'])->middleware('throttle:10,1')->name('api.check-email');
+
+Route::get('events/public/{event}', [PublicEventController::class, 'show'])->name('api.events.public.show');
+Route::get('events/{event}/qr', EventQrController::class)->name('events.qr');
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('logout', [AuthController::class, 'logout'])->name('api.logout');

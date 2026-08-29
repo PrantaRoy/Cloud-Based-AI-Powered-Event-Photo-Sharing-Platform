@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Concerns\GeneratesUniqueEventSlugs;
 use Database\Factories\EventFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -12,6 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
     'name',
+    'slug',
     'event_date',
     'venue',
     'longitude',
@@ -28,7 +30,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Event extends Model
 {
     /** @use HasFactory<EventFactory> */
-    use HasFactory;
+    use GeneratesUniqueEventSlugs, HasFactory;
 
     public const STATUS_GROUPS = [
         'upcoming' => ['pending', 'scheduled'],
@@ -44,6 +46,26 @@ class Event extends Model
             'end_time' => 'datetime',
             'reg_auto_approve' => 'boolean',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        static::creating(function (Event $event) {
+            if (empty($event->slug)) {
+                $event->slug = static::generateUniqueEventSlug((string) $event->name);
+            }
+        });
+    }
+
+    /**
+     * Resolve route-model bindings by slug, falling back to the numeric id so
+     * existing id-based links keep working.
+     */
+    public function resolveRouteBinding($value, $field = null): ?Model
+    {
+        return $this->where('slug', $value)
+            ->when(is_numeric($value), fn (Builder $query) => $query->orWhere('id', $value))
+            ->firstOrFail();
     }
 
     public function scopeVisibleTo(Builder $query, User $user): Builder
