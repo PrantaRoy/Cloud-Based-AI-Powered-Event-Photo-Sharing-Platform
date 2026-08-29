@@ -1,0 +1,602 @@
+# EventPro — Frontend Coding Brief & Troubleshooting Guide
+
+**Project:** COMPX527 — AI-Powered Event Photo Sharing Platform   
+**Stack:** Vite + React 18 + React Router v6 + Tailwind CSS  
+**Local API:** Node.js mock server (no PHP, no database needed)
+
+---
+
+## 1. Project Structure
+
+```
+eventpro/
+├── .devcontainer/
+│   ├── Dockerfile          ← Node 22 base image
+│   └── devcontainer.json   ← VS Code container config
+├── .env                    ← VITE_API_URL=http://localhost:3001/api
+├── mock-server.cjs         ← Local mock API (all endpoints, in-memory data)
+├── package.json
+├── vite.config.js
+├── tailwind.config.js
+├── api-src/                ← Laravel files for backend team (not used locally)
+└── src/
+    ├── main.jsx            ← Entry point, wraps App in BrowserRouter
+    ├── App.jsx             ← All routes + RequireAuth guard
+    ├── api.js              ← ALL API calls in one place
+    ├── components/
+    │   ├── Layout.jsx      ← Sidebar + top nav + logout
+    │   ├── NewEventModal.jsx
+    │   └── ChangePasswordModal.jsx
+    └── pages/
+        ├── Login.jsx
+        ├── AllEvents.jsx
+        ├── MyEvents.jsx
+        ├── OrganisedEvents.jsx
+        ├── EventDetail.jsx
+        ├── SearchPhotos.jsx
+        └── MyPhotos.jsx
+```
+
+---
+
+## 2. How to Start the Dev Environment
+
+### First time
+1. Unzip `eventpro_v2.zip`, open the `eventpro/` folder in VS Code
+2. Press `F1` → "Dev Containers: Reopen in Container"
+3. Wait ~2 min for container to build
+
+### Every time after that
+Open two terminals inside VS Code (click the `+` button in the terminal panel):
+
+**Terminal 1 — Mock API:**
+```bash
+node mock-server.cjs
+# → EventPro Mock API running on http://localhost:3001
+```
+
+**Terminal 2 — React:**
+```bash
+npm run dev
+# → Running on http://localhost:5173
+```
+
+Then open **http://localhost:5173** in your browser.
+
+---
+
+## 3. How the Mock API Works
+
+`mock-server.cjs` is a plain Node.js HTTP server. It:
+- Runs on **port 3001**
+- Has all the same endpoints as the real Laravel API
+- Stores data **in memory** (resets when you stop the server)
+- Pre-loads 3 demo events on startup
+- Accepts **any email + any password** for login
+
+It returns a token like `mock-token-saleh-test-com` after login. This token is stored in sessionStorage and sent as `Authorization: Bearer <token>` on every subsequent request.
+
+**Note:** Data is lost when you stop `mock-server.cjs`. Re-run it to get the 3 demo events back.
+
+---
+
+## 4. How Authentication Works
+
+- Login with any email + password → token stored in `sessionStorage`
+- Token is cleared when you close the browser tab
+- All pages except `/login` require a token (auth guard in `App.jsx`)
+- Logout: Admin dropdown → Logout → token cleared → redirected to `/login`
+
+---
+
+## 5. How src/api.js Works
+
+All API calls go through `src/api.js`. It:
+- Reads `VITE_API_URL` from `.env` (set to `http://localhost:3001/api`)
+- Automatically adds the `Authorization: Bearer` header
+- Throws an `Error` with the server's message if the response is not OK
+
+**To add a new API call:**
+```js
+// In src/api.js, add to the api object:
+getMyThing: () => request('GET', '/my-thing'),
+postMyThing: (data) => request('POST', '/my-thing', data),
+```
+
+**To use in a component:**
+```jsx
+import { api } from '../api';
+
+useEffect(() => {
+  api.getMyThing().then(setData).catch(e => setError(e.message));
+}, []);
+```
+
+---
+
+## 6. How Each Page Works
+
+| Page | Route | What it does |
+|---|---|---|
+| Login | `/login` | 2-step email then password. Calls `api.login()`, stores token |
+| All Events | `/events` | Grid of all events. Filter tabs work in-memory |
+| Event Detail | `/events/:id` | Banner, photo gallery, upload flow |
+| Organised Events | `/organised-events` | Table of events you created, New Event modal |
+| My Events | `/my-events` | Events you joined (shows all events via mock) |
+| Search My Photos | `/search-photos` | Selfie upload → face match (stub in mock) |
+| My Photos | `/my-photos` | Your matched photos (empty until AI pipeline built) |
+
+---
+
+## 7. Common Errors & Fixes
+
+### "An error occurred setting up the container"
+**Fix:** Make sure Docker Desktop is running before opening VS Code
+
+### `require is not defined in ES module scope`
+**Fix:** Rename `mock-server.js` to `mock-server.cjs` and run `node mock-server.cjs`
+
+### "Failed to fetch" / CORS error in browser console
+**Fix:** Mock server not running. Run `node mock-server.cjs` in a terminal
+
+### Login works but pages show "Error: Unauthenticated"
+**Fix:** Token lost (tab closed or refreshed). Log out and log in again
+
+### Events not showing after restart
+**Fix:** Mock server data resets on restart. The 3 demo events reload automatically when you run `node mock-server.cjs` again
+
+### Vite port 5173 already in use
+**Fix:** `lsof -ti:5173 | xargs kill` then run `npm run dev` again
+
+### "Cannot find module" errors in Vite
+**Fix:** Run `npm install` inside the container terminal
+
+---
+
+## 8. Environment Variables
+
+### Frontend (eventpro/.env)
+```
+VITE_API_URL=http://localhost:3001/api
+```
+Change to the real Laravel API URL when handing over to backend:
+```
+VITE_API_URL=https://api.eventpro.yourdomain.com/api
+```
+
+---
+
+## 9. Ports Quick Reference
+
+| Port | Service |
+|---|---|
+| 5173 | React (Vite dev server) |
+| 3001 | Mock API (node mock-server.cjs) |
+
+---
+
+## 10. Handing Over to Backend Team
+
+Give them:
+1. `eventpro_v2.zip` — full project
+2. `HANDOVER.md` — API contracts + what they need to build
+3. `TEST_CHECKLIST.md` — completed and signed off
+
+The `api-src/` folder inside the zip contains ready-made Laravel controllers and routes. Backend team copies these into a fresh Laravel 11 install and wires to real AWS services.
+
+# EventPro — Frontend Handover Document
+
+**From:** Frontend Team (Saleh Mohammed Abdul Quaiyyum, ID: 1706625)  
+**To:** Backend / Infrastructure Team  
+**Date:** August 2026  
+**Project:** COMPX527 — AI-Powered Event Photo Sharing Platform
+
+---
+
+## What Has Been Built
+
+### Frontend (React / Vite) — COMPLETE & TESTED LOCALLY
+
+All pages are built and wired to the API. Tested locally against a Node.js mock server.
+
+| Page | Route | API Endpoint Used |
+|---|---|---|
+| Login | `/login` | POST /api/auth/login |
+| All Events | `/events` | GET /api/events |
+| Event Detail | `/events/:id` | GET /api/events/:id, GET /api/gallery/:id |
+| Organised Events | `/organised-events` | GET /api/events?organiser=me |
+| New Event modal | — | POST /api/events |
+| Photo Upload | Event Detail page | POST /api/events/:id/upload-url, POST /api/events/:id/uploaded |
+| Search My Photos | `/search-photos` | POST /api/search/selfie |
+| My Photos | `/my-photos` | GET /api/photos/mine |
+| Change Password | modal | POST /api/auth/change-password |
+
+### Local Testing Setup (Frontend Only)
+
+Local dev uses a lightweight Node.js mock server (`mock-server.cjs` on port 3001).  
+No PHP, no database, no AWS needed to run the frontend locally.
+
+To start locally:
+```bash
+# Terminal 1
+node mock-server.cjs        # mock API on :3001
+
+# Terminal 2
+npm run dev                 # React on :5173
+```
+
+### Laravel API Files — Ready for Backend (api-src/)
+
+The `api-src/` folder contains ready-made Laravel 11 files. Backend team copies these into a fresh `composer create-project laravel/laravel api` install.
+
+| File | Purpose |
+|---|---|
+| `api-src/routes/api.php` | All API routes |
+| `api-src/app/Http/Controllers/AuthController.php` | Login, register, change password |
+| `api-src/app/Http/Controllers/EventController.php` | Events CRUD |
+| `api-src/app/Http/Controllers/PhotoController.php` | Upload, gallery, face search |
+| `api-src/app/Http/Middleware/CognitoAuth.php` | JWT validation middleware |
+| `api-src/app/Services/DynamoService.php` | DynamoDB read/write abstraction |
+| `api-src/bootstrap/app.php` | Middleware alias + CORS config |
+| `api-src/.env.local` | Template .env for EC2 |
+
+---
+
+## API Contract
+
+All endpoints use JSON. Protected endpoints require:
+```
+Authorization: Bearer <cognito-jwt-token>
+```
+
+### Auth
+```
+POST /api/auth/login
+Body:    { email, password }
+Returns: { token, user: { id, email } }
+
+POST /api/auth/register
+Body:    { email, password, name }
+Returns: { message }
+
+POST /api/auth/change-password   [protected]
+Body:    { current_password, new_password }
+Returns: { message }
+```
+
+### Events
+```
+GET /api/events                    [protected]
+GET /api/events?organiser=me       [protected]
+GET /api/events?status=Upcoming    [protected]
+Returns: [ { eventId, name, date, venue, privacy, status,
+             organiserId, participantCount, photoCount, createdAt } ]
+
+POST /api/events                   [protected]
+Body:    { name, date, venue, privacy }
+Returns: { eventId, name, date, venue, privacy, status, ... }   (201)
+
+GET /api/events/:id                [protected]
+Returns: { eventId, name, date, venue, privacy, status, ... }
+
+PATCH /api/events/:id              [protected]
+Body:    { name?, date?, venue?, privacy?, status? }
+Returns: { eventId, name, ... }
+```
+
+### Photos
+```
+POST /api/events/:id/upload-url    [protected]
+Body:    { filename, mime }
+Returns: { photoId, uploadUrl, key }
+
+POST /api/events/:id/uploaded      [protected]
+Body:    { photoId, key }
+Returns: { message, photo }        (201)
+
+GET /api/gallery/:event_id         [protected]
+Returns: [ { photoId, eventId, s3Key, thumbKey, uploadedBy,
+             uploadedAt, processed, matchedUsers } ]
+
+GET /api/photos/mine               [protected]
+Returns: [ { photoId, eventId, thumbUrl } ]
+
+POST /api/search/selfie            [protected]
+Body:    { event_id }
+Returns: { matches: [ { photoId, thumbUrl } ] }
+```
+
+---
+
+## DynamoDB Table Schemas
+
+### Events
+| Attribute | Type | Notes |
+|---|---|---|
+| eventId | String (PK) | UUID: `evt-<uuid>` |
+| name | String | |
+| date | String | ISO date e.g. `2026-09-15` |
+| venue | String | |
+| privacy | String | `Public` / `Protected` / `Private` |
+| organiserId | String | Cognito sub (GSI key for organiser-index) |
+| status | String | `Upcoming` / `Active` / `Archived` |
+| participantCount | Number | |
+| photoCount | Number | |
+| bannerKey | String | S3 key |
+| qrcodeKey | String | S3 key |
+| createdAt | String | ISO 8601 |
+
+### Photos
+| Attribute | Type | Notes |
+|---|---|---|
+| photoId | String (PK) | UUID |
+| eventId | String (SK) | |
+| s3Key | String | S3 object key |
+| thumbKey | String | Thumbnail key (written by Lambda) |
+| uploadedBy | String | Cognito userId |
+| uploadedAt | String | ISO 8601 |
+| processed | Boolean | false until Lambda runs |
+| matchedUsers | List | Array of Cognito userIds |
+
+### FaceEmbeddings
+| Attribute | Type | Notes |
+|---|---|---|
+| userId | String (PK) | Cognito userId |
+| eventId | String (SK) | |
+| embedding | List | 128 floats (face_recognition vector) |
+| selfieKey | String | S3 key of original selfie |
+
+---
+
+## What Backend Team Must Do
+
+### Step 1 — Install Laravel
+```bash
+composer create-project laravel/laravel api
+cd api
+composer require aws/aws-sdk-php
+cp -r ../api-src/routes/api.php routes/api.php
+cp -r ../api-src/app/Http/Controllers/. app/Http/Controllers/
+cp -r ../api-src/app/Http/Middleware/. app/Http/Middleware/
+cp -r ../api-src/app/Services/. app/Services/
+cp ../api-src/bootstrap/app.php bootstrap/app.php
+cp ../api-src/.env.local .env
+php artisan key:generate
+```
+
+### Step 2 — Configure .env on EC2
+```
+APP_ENV=production
+AWS_DEFAULT_REGION=ap-southeast-2
+AWS_ACCESS_KEY_ID=<from EC2 IAM role>
+AWS_SECRET_ACCESS_KEY=<from EC2 IAM role>
+S3_BUCKET=eventpro-photos
+SQS_QUEUE_URL=https://sqs.ap-southeast-2.amazonaws.com/<account>/eventpro-jobs
+COGNITO_USER_POOL_ID=ap-southeast-2_XXXXXXXX
+COGNITO_CLIENT_ID=<client-id>
+COGNITO_CLIENT_SECRET=<from Secrets Manager>
+```
+
+### Step 3 — Update Frontend for Production
+Change `eventpro/.env`:
+```
+VITE_API_URL=https://api.eventpro.yourdomain.com/api
+```
+Then build:
+```bash
+npm run build   # Output in dist/ — deploy to CloudFront or S3 static hosting
+```
+
+### Step 4 — Build Lambda AI Pipeline
+- Python 3.10 container with `face_recognition`, `dlib`, `opencv-python`
+- SQS trigger: read `process_photo` jobs
+- Extract 128-d face vector from photo in S3
+- Compare against FaceEmbeddings table (Euclidean distance < 0.5 = match)
+- Write matched userIds to `Photos.matchedUsers`
+- Generate thumbnail, write to S3 `thumbs/` prefix
+- Publish SNS notification to matched user
+
+---
+
+## Known Limitations Passed to Backend
+
+1. **My Photos** always empty until Lambda writes `matchedUsers` to Photos table
+2. **Search My Photos** needs Lambda invocation in `PhotoController::searchBySelfie`
+3. **QR code** needs PHP QR library or Lambda to generate on event creation
+4. **CloudFront signed URLs** — gallery currently returns raw S3 keys; backend should convert to signed CloudFront URLs before returning
+5. **Event join flow** — participantCount not updated; join button not built (frontend hook is ready)
+
+---
+
+
+
+# EventPro — Test Checklist
+
+**Project:** COMPX527 — AI-Powered Event Photo Sharing Platform  
+**Test environment:** Local dev container (localhost:5173 + mock API on localhost:3001)  
+**Tester:** ___________________  **Date:** ___________________
+
+Mark each test: ✅ Pass | ❌ Fail | ⚠️ Partial
+
+---
+
+## Pre-Test Setup
+
+Confirm all of the following before starting:
+
+- [ ] Docker Desktop is running
+- [ ] VS Code opened the `eventpro/` folder inside the Dev Container
+- [ ] Terminal 1: `node mock-server.cjs` → shows "EventPro Mock API running on http://localhost:3001"
+- [ ] Terminal 2: `npm run dev` → shows "Local: http://localhost:5173"
+- [ ] Browser opened at http://localhost:5173 → Login page visible
+
+---
+
+## Section 1 — Authentication
+
+| # | Test | Steps | Expected Result | Pass/Fail | Notes |
+|---|---|---|---|---|---|
+| 1.1 | Login page loads | Go to http://localhost:5173/login | Login form shows with email field | | |
+| 1.2 | Step 1 — email continues | Enter any email, click Continue | Step 2 shows with email locked + password field | | |
+| 1.3 | Back button | Click "← Use a different email" | Returns to Step 1 | | |
+| 1.4 | Successful login | Any email + any password → Sign in | Redirected to /events | | |
+| 1.5 | Empty password rejected | Leave password blank, click Sign in | Form won't submit | | |
+| 1.6 | Auth guard | Log out, paste http://localhost:5173/events in browser | Redirected to /login | | |
+| 1.7 | Change password modal | Login → Admin top right → Change Password | Modal opens with 3 fields | | |
+| 1.8 | Password mismatch | Enter different new/confirm passwords → Save | Error: "Passwords do not match" | | |
+| 1.9 | Change password success | Fill all 3 fields correctly → Save | "Password changed successfully!" shown | | |
+| 1.10 | Logout | Admin → Logout | Redirected to /login | | |
+| 1.11 | Session cleared | After logout, visit /events directly | Redirected to /login | | |
+
+---
+
+## Section 2 — All Events Page
+
+| # | Test | Steps | Expected Result | Pass/Fail | Notes |
+|---|---|---|---|---|---|
+| 2.1 | Events load | Login → /events | 3 demo event cards visible | | |
+| 2.2 | Demo events present | Check cards | Auckland Tech Meetup, UoA AI Showcase, Wellington Photo Walk | | |
+| 2.3 | Filter — All | Click "All" tab | All 3 events shown | | |
+| 2.4 | Filter — Upcoming | Click "Upcoming" | Only Auckland Tech Meetup shown | | |
+| 2.5 | Filter — Active | Click "Active" | Only UoA AI Showcase shown | | |
+| 2.6 | Filter — Archived | Click "Archived" | Only Wellington Photo Walk shown | | |
+| 2.7 | Details navigates | Click "Details" on any card | Goes to /events/{eventId} | | |
+
+---
+
+## Section 3 — Event Detail Page
+
+| # | Test | Steps | Expected Result | Pass/Fail | Notes |
+|---|---|---|---|---|---|
+| 3.1 | Page loads | Click Details on any event | Banner gradient, event name, date, venue shown | | |
+| 3.2 | Status badge | Check banner | Correct status badge (Upcoming/Active/Archived) | | |
+| 3.3 | Stats visible | Below banner | Participants and Photos count shown | | |
+| 3.4 | Back button | Click "← Back" | Returns to previous page | | |
+| 3.5 | Upload section | Scroll down | "+ Choose Photo" button visible | | |
+| 3.6 | File picker opens | Click "+ Choose Photo" | OS file picker opens | | |
+| 3.7 | Upload a photo | Select any image file | Progress messages: "Getting upload URL… Processing… ✅ Uploaded!" | | |
+| 3.8 | Photo in gallery | After upload | New photo card appears in grid immediately | | |
+| 3.9 | Processing badge | On new photo | Yellow "Processing…" badge visible | | |
+| 3.10 | Empty gallery | For event with no photos | "No photos yet. Be the first to upload!" | | |
+
+---
+
+## Section 4 — Organised Events Page
+
+| # | Test | Steps | Expected Result | Pass/Fail | Notes |
+|---|---|---|---|---|---|
+| 4.1 | Page loads | Click Organised Events in sidebar | Table loads (may be empty for new user) | | |
+| 4.2 | New Event button | Click "+ New Event" | Modal opens with 4 fields | | |
+| 4.3 | Validation | Click Create with empty fields | Form won't submit | | |
+| 4.4 | Create event | Fill name/date/venue/privacy → Create | New row appears in table instantly | | |
+| 4.5 | Event persists | Create event, then refresh page | Event still in table (mock server still running) | | |
+| 4.6 | Privacy options | Open privacy dropdown | Shows Public / Protected / Private | | |
+| 4.7 | New event status | Check created event | Status shows "Upcoming" | | |
+| 4.8 | Cancel | Click Cancel | Modal closes, nothing created | | |
+
+---
+
+## Section 5 — Event Detail — Upload Flow (API check)
+
+| # | Test | Steps | Expected Result | Pass/Fail | Notes |
+|---|---|---|---|---|---|
+| 5.1 | Upload-url called | F12 → Network → upload a photo | POST to /api/events/:id/upload-url returns 200 with photoId | | |
+| 5.2 | Uploaded called | Same upload | POST to /api/events/:id/uploaded returns 201 | | |
+| 5.3 | Photo in memory | After upload, open another browser tab → same event | Photo count incremented by 1 | | |
+
+---
+
+## Section 6 — Search My Photos
+
+| # | Test | Steps | Expected Result | Pass/Fail | Notes |
+|---|---|---|---|---|---|
+| 6.1 | Page loads | Click "Search My Photos" | Form with Event ID + selfie upload shown | | |
+| 6.2 | Selfie preview | Select a photo | Preview image shown with ✕ button | | |
+| 6.3 | Remove selfie | Click ✕ | Preview cleared, upload area back | | |
+| 6.4 | Missing event ID | Leave blank → Find | Error: "Please enter an Event ID" | | |
+| 6.5 | Missing selfie | Fill event ID, no selfie → Find | Error: "Please select a selfie photo" | | |
+| 6.6 | Search with demo event | Event ID: `evt-demo-001`, any photo → Find | Info note shown + "No matches found" (expected — AI not running) | | |
+
+---
+
+## Section 7 — My Photos
+
+| # | Test | Steps | Expected Result | Pass/Fail | Notes |
+|---|---|---|---|---|---|
+| 7.1 | Page loads | Click "My Photos" | Page loads without crash | | |
+| 7.2 | Empty state | View the page | Empty state with instructions shown | | |
+
+---
+
+## Section 8 — Navigation & Layout
+
+| # | Test | Steps | Expected Result | Pass/Fail | Notes |
+|---|---|---|---|---|---|
+| 8.1 | Sidebar highlights | Click each link | Active link highlighted in indigo | | |
+| 8.2 | All 5 links work | Click All Events / My Events / Organised / Search / My Photos | Each navigates correctly | | |
+| 8.3 | No full page reload | Click between pages | Browser doesn't flash/reload (SPA) | | |
+| 8.4 | Admin dropdown | Click Admin → dropdown opens | Shows Change Password + Logout | | |
+
+---
+
+## Section 9 — API Integration (Browser DevTools)
+
+Open F12 → Network tab, then do the actions below:
+
+| # | Test | Action | Expected in Network | Pass/Fail |
+|---|---|---|---|---|
+| 9.1 | Login call | Log in | POST /api/auth/login → 200 with `token` in response | | |
+| 9.2 | Events fetch | Load All Events | GET /api/events → 200 with array of events | | |
+| 9.3 | Auth header | Any protected page | Request headers show `Authorization: Bearer mock-token-...` | | |
+| 9.4 | Create event | New Event modal → Create | POST /api/events → 201 | | |
+| 9.5 | No token = redirect | Clear sessionStorage in DevTools, reload | Redirected to /login | | |
+
+---
+
+## Section 10 — Error Handling
+
+| # | Test | Steps | Expected Result | Pass/Fail | Notes |
+|---|---|---|---|---|---|
+| 10.1 | Mock server down | Stop mock server (Ctrl+C), reload All Events | Error message shown on page, no crash | | |
+| 10.2 | Server comes back | Restart mock server, refresh | Events load normally | | |
+| 10.3 | Unknown URL | Go to http://localhost:5173/does-not-exist | Redirected to /events | | |
+
+---
+
+## Test Summary
+
+| Section | Total | Passed | Failed | Notes |
+|---|---|---|---|---|
+| 1. Authentication | 11 | | | |
+| 2. All Events | 7 | | | |
+| 3. Event Detail | 10 | | | |
+| 4. Organised Events | 8 | | | |
+| 5. Upload API check | 3 | | | |
+| 6. Search My Photos | 6 | | | |
+| 7. My Photos | 2 | | | |
+| 8. Navigation | 4 | | | |
+| 9. API Integration | 5 | | | |
+| 10. Error Handling | 3 | | | |
+| **TOTAL** | **59** | | | |
+
+---
+
+## Known Expected Results (Not Bugs)
+
+These will happen and are normal:
+
+| Item | Why |
+|---|---|
+| Search My Photos returns empty | AI Lambda not running locally |
+| My Photos always empty | Lambda hasn't matched any faces yet |
+| Photo upload doesn't go to real S3 | Mock server returns stub URL; DynamoDB record IS saved in memory |
+| Data resets on mock server restart | In-memory only; demo events reload automatically |
+
+---
+
+## Sign-off
+
+**Tested by:** ___________________  
+**Date:** ___________________  
+**Result:** ☐ All critical tests pass — ready for handover  
+**Notes:** ___________________
