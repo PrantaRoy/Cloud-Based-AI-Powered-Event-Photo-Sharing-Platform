@@ -6,6 +6,8 @@ import { ErrorBanner } from '../../components/common/ErrorBanner'
 import { Spinner } from '../../components/common/Spinner'
 import { PhotoUploadButton } from '../../components/photos/PhotoUploadButton'
 import { EventShareButton } from '../../components/events/EventShareButton'
+import { VenueAutocomplete, type VenueValue } from '../../components/events/VenueAutocomplete'
+import { buildEventPayload } from '../../lib/eventPayload'
 import { deleteEvent, getEvent, updateEvent, updateEventThumbnail } from '../../api/events'
 import { ApiError } from '../../api/client'
 import type { EventResource } from '../../types/event'
@@ -20,8 +22,10 @@ export function EventEditPage() {
 
   const [name, setName] = useState('')
   const [eventDate, setEventDate] = useState('')
-  const [venue, setVenue] = useState('')
+  const [venue, setVenue] = useState<VenueValue>({ venue: '', latitude: null, longitude: null })
   const [privacy, setPrivacy] = useState('public')
+  const [startTime, setStartTime] = useState('')
+  const [endTime, setEndTime] = useState('')
   const [regAutoApprove, setRegAutoApprove] = useState(false)
 
   const [errors, setErrors] = useState<FieldErrors | null>(null)
@@ -35,8 +39,10 @@ export function EventEditPage() {
         setEvent(e)
         setName(e.name)
         setEventDate(e.event_date.slice(0, 10))
-        setVenue(e.venue)
+        setVenue({ venue: e.venue, latitude: e.latitude, longitude: e.longitude })
         setPrivacy(e.privacy)
+        setStartTime(e.start_time ? e.start_time.slice(0, 16) : '')
+        setEndTime(e.end_time ? e.end_time.slice(0, 16) : '')
         setRegAutoApprove(e.reg_auto_approve)
       })
       .catch((err) => setLoadError(err instanceof ApiError ? err.message : 'Failed to load event.'))
@@ -49,13 +55,20 @@ export function EventEditPage() {
     setGeneralError(null)
     setErrors(null)
     try {
-      const updated = await updateEvent(id, {
-        name,
-        event_date: eventDate,
-        venue,
-        privacy,
-        reg_auto_approve: regAutoApprove,
-      })
+      const updated = await updateEvent(
+        id,
+        buildEventPayload({
+          name,
+          eventDate,
+          venue: venue.venue,
+          latitude: venue.latitude,
+          longitude: venue.longitude,
+          privacy,
+          startTime,
+          endTime,
+          regAutoApprove,
+        }),
+      )
       setEvent(updated)
     } catch (err) {
       if (err instanceof ApiError) {
@@ -122,7 +135,27 @@ export function EventEditPage() {
           onChange={(e) => setEventDate(e.target.value)}
           error={errors?.event_date?.[0]}
         />
-        <Input label="Venue" value={venue} onChange={(e) => setVenue(e.target.value)} error={errors?.venue?.[0]} />
+        <VenueAutocomplete
+          value={venue}
+          onChange={setVenue}
+          error={errors?.venue?.[0] ?? errors?.latitude?.[0] ?? errors?.longitude?.[0]}
+        />
+        <div className="grid grid-cols-2 gap-3">
+          <Input
+            label="Starts"
+            type="datetime-local"
+            value={startTime}
+            onChange={(e) => setStartTime(e.target.value)}
+            error={errors?.start_time?.[0]}
+          />
+          <Input
+            label="Ends"
+            type="datetime-local"
+            value={endTime}
+            onChange={(e) => setEndTime(e.target.value)}
+            error={errors?.end_time?.[0]}
+          />
+        </div>
         <div className="flex flex-col gap-1">
           <label className="text-sm font-medium text-gray-700">Privacy</label>
           <select
@@ -132,6 +165,7 @@ export function EventEditPage() {
           >
             <option value="public">Public</option>
             <option value="private">Private</option>
+            <option value="protected">Protected</option>
           </select>
         </div>
         <label className="flex items-center gap-2 text-sm text-gray-700">

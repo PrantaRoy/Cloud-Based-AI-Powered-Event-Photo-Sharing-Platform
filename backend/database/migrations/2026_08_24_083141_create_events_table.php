@@ -16,8 +16,8 @@ return new class extends Migration
             $table->string('name');
             $table->timestamp('event_date');
             $table->string('venue');
-            $table->string('longitude')->nullable();
-            $table->string('latitude')->nullable();
+            $table->decimal('latitude', 10, 7)->nullable();
+            $table->decimal('longitude', 10, 7)->nullable();
             $table->enum('privacy', ['public', 'private','protected'])->default('public');
             $table->enum('status', ['pending', 'scheduled','active','finished','cancelled','archived'])->default('pending');
             $table->timestamp('start_time')->nullable();

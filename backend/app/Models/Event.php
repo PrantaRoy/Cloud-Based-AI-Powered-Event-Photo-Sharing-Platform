@@ -44,6 +44,8 @@ class Event extends Model
             'event_date' => 'datetime',
             'start_time' => 'datetime',
             'end_time' => 'datetime',
+            'latitude' => 'float',
+            'longitude' => 'float',
             'reg_auto_approve' => 'boolean',
         ];
     }

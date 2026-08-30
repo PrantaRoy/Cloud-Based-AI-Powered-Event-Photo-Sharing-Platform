@@ -9,7 +9,9 @@ import { Button } from '../../components/common/Button'
 import { Modal } from '../../components/common/Modal'
 import { Input } from '../../components/common/Input'
 import { EventSharePanel } from '../../components/events/EventSharePanel'
+import { VenueAutocomplete, type VenueValue } from '../../components/events/VenueAutocomplete'
 import { createEvent } from '../../api/events'
+import { buildEventPayload } from '../../lib/eventPayload'
 import { ApiError } from '../../api/client'
 import type { FieldErrors } from '../../types/api'
 import type { EventResource } from '../../types/event'
@@ -72,8 +74,11 @@ function CreateEventModal({
 }) {
   const [name, setName] = useState('')
   const [eventDate, setEventDate] = useState('')
-  const [venue, setVenue] = useState('')
+  const [venue, setVenue] = useState<VenueValue>({ venue: '', latitude: null, longitude: null })
   const [privacy, setPrivacy] = useState('public')
+  const [startTime, setStartTime] = useState('')
+  const [endTime, setEndTime] = useState('')
+  const [regAutoApprove, setRegAutoApprove] = useState(true)
   const [errors, setErrors] = useState<FieldErrors | null>(null)
   const [generalError, setGeneralError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
@@ -84,7 +89,19 @@ function CreateEventModal({
     setGeneralError(null)
     setErrors(null)
     try {
-      const event = await createEvent({ name, event_date: eventDate, venue, privacy })
+      const event = await createEvent(
+        buildEventPayload({
+          name,
+          eventDate,
+          venue: venue.venue,
+          latitude: venue.latitude,
+          longitude: venue.longitude,
+          privacy,
+          startTime,
+          endTime,
+          regAutoApprove,
+        }),
+      )
       setCreated(event)
       onCreated()
     } catch (err) {
@@ -131,7 +148,27 @@ function CreateEventModal({
           onChange={(e) => setEventDate(e.target.value)}
           error={errors?.event_date?.[0]}
         />
-        <Input label="Venue" value={venue} onChange={(e) => setVenue(e.target.value)} error={errors?.venue?.[0]} />
+        <VenueAutocomplete
+          value={venue}
+          onChange={setVenue}
+          error={errors?.venue?.[0] ?? errors?.latitude?.[0] ?? errors?.longitude?.[0]}
+        />
+        <div className="grid grid-cols-2 gap-3">
+          <Input
+            label="Starts"
+            type="datetime-local"
+            value={startTime}
+            onChange={(e) => setStartTime(e.target.value)}
+            error={errors?.start_time?.[0]}
+          />
+          <Input
+            label="Ends"
+            type="datetime-local"
+            value={endTime}
+            onChange={(e) => setEndTime(e.target.value)}
+            error={errors?.end_time?.[0]}
+          />
+        </div>
         <div className="flex flex-col gap-1">
           <label className="text-sm font-medium text-gray-700">Privacy</label>
           <select
@@ -141,8 +178,17 @@ function CreateEventModal({
           >
             <option value="public">Public</option>
             <option value="private">Private</option>
+            <option value="protected">Protected</option>
           </select>
         </div>
+        <label className="flex items-center gap-2 text-sm text-gray-700">
+          <input
+            type="checkbox"
+            checked={regAutoApprove}
+            onChange={(e) => setRegAutoApprove(e.target.checked)}
+          />
+          Auto-approve registrations
+        </label>
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="secondary" onClick={onClose} disabled={saving}>
             Cancel
