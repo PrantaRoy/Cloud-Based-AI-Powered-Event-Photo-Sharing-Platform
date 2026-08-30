@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { LoginPage } from '../pages/auth/LoginPage'
+import { LandingPage } from '../pages/landing/LandingPage'
 import { DashboardLayout } from '../pages/dashboard/DashboardLayout'
 import { AllEventsPage } from '../pages/dashboard/AllEventsPage'
 import { MyEventsPage } from '../pages/dashboard/MyEventsPage'
@@ -15,6 +16,7 @@ import { ProtectedRoute } from './ProtectedRoute'
 export function AppRouter() {
   return (
     <Routes>
+      <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/e/:slug" element={<PublicEventPage />} />
       <Route
@@ -35,8 +37,7 @@ export function AppRouter() {
         <Route path="photos" element={<MyPhotosPage />} />
         <Route path="albums/:id" element={<AlbumDetailPage />} />
       </Route>
-      <Route path="/" element={<Navigate to="/dashboard/events" replace />} />
-      <Route path="*" element={<Navigate to="/dashboard/events" replace />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
 }

@@ -33,8 +33,8 @@ class Event extends Model
     use GeneratesUniqueEventSlugs, HasFactory;
 
     public const STATUS_GROUPS = [
-        'upcoming' => ['pending', 'scheduled'],
-        'active' => ['active'],
+        'upcoming' => ['active', 'scheduled'],
+        'ongoing' => ['ongoing'],
         'archived' => ['finished', 'cancelled', 'archived'],
     ];
 

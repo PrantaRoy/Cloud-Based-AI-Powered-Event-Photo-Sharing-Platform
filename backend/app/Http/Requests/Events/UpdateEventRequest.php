@@ -20,7 +20,7 @@ class UpdateEventRequest extends FormRequest
             'latitude' => ['nullable', 'numeric', 'between:-90,90'],
             'longitude' => ['nullable', 'numeric', 'between:-180,180'],
             'privacy' => ['sometimes', 'string', Rule::in(['public', 'private', 'protected'])],
-            'status' => ['sometimes', 'string', Rule::in(['pending', 'scheduled', 'active', 'finished', 'cancelled', 'archived'])],
+            'status' => ['sometimes', 'string', Rule::in(['active', 'scheduled', 'ongoing', 'finished', 'cancelled', 'archived'])],
             'start_time' => ['nullable', 'date'],
             'end_time' => ['nullable', 'date', 'after_or_equal:start_time'],
             'reg_auto_approve' => ['sometimes', 'boolean'],

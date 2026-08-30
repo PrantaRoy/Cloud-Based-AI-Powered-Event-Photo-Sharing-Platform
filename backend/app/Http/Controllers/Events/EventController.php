@@ -25,7 +25,7 @@ class EventController extends Controller
             $user = $request->user();
 
             $validated = $request->validate([
-                'status_group' => ['sometimes', 'string', 'in:upcoming,active,archived'],
+                'status_group' => ['sometimes', 'string', 'in:upcoming,ongoing,archived'],
                 'scope' => ['sometimes', 'string', 'in:all,mine,organised'],
             ]);
 

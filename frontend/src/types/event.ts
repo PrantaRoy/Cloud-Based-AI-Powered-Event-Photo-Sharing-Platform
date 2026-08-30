@@ -1,9 +1,10 @@
 import type { UserSummary } from './user'
 
-// The DB enum per the backend plan: pending|scheduled|active|finished|cancelled|archived
-export type EventStatus = 'pending' | 'scheduled' | 'active' | 'finished' | 'cancelled' | 'archived'
+// The DB enum: active|scheduled|ongoing|finished|cancelled|archived
+//   active = published/listed, scheduled = dated & upcoming, ongoing = happening now
+export type EventStatus = 'active' | 'scheduled' | 'ongoing' | 'finished' | 'cancelled' | 'archived'
 
-export type EventStatusGroup = 'upcoming' | 'active' | 'archived'
+export type EventStatusGroup = 'upcoming' | 'ongoing' | 'archived'
 
 export type EventScope = 'all' | 'mine' | 'organised'
 

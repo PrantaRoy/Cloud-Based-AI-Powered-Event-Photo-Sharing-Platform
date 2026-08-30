@@ -3,7 +3,7 @@ import type { EventStatusGroup } from '../../types/event'
 const OPTIONS: { value: EventStatusGroup | 'all'; label: string }[] = [
   { value: 'all', label: 'All' },
   { value: 'upcoming', label: 'Upcoming' },
-  { value: 'active', label: 'Active' },
+  { value: 'ongoing', label: 'Happening now' },
   { value: 'archived', label: 'Archived' },
 ]
 

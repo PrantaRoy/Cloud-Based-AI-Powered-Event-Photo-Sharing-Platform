@@ -19,6 +19,8 @@ Route::post('forgot-password', [PasswordController::class, 'forgotPassword'])->m
 Route::post('reset-password', [PasswordController::class, 'reset'])->middleware('throttle:6,1')->name('api.password.reset');
 Route::post('check-email', [EmailCheckController::class, 'check'])->middleware('throttle:10,1')->name('api.check-email');
 
+Route::get('events/public', [PublicEventController::class, 'index'])->name('api.events.public.index');
+Route::get('events/public/stats', [PublicEventController::class, 'stats'])->name('api.events.public.stats');
 Route::get('events/public/{event}', [PublicEventController::class, 'show'])->name('api.events.public.show');
 Route::get('events/{event}/qr', EventQrController::class)->name('events.qr');
 

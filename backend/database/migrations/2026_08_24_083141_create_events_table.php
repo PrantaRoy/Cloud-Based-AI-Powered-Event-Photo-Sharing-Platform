@@ -19,7 +19,7 @@ return new class extends Migration
             $table->decimal('latitude', 10, 7)->nullable();
             $table->decimal('longitude', 10, 7)->nullable();
             $table->enum('privacy', ['public', 'private','protected'])->default('public');
-            $table->enum('status', ['pending', 'scheduled','active','finished','cancelled','archived'])->default('pending');
+            $table->enum('status', ['active', 'scheduled','ongoing','finished','cancelled','archived'])->default('active');
             $table->timestamp('start_time')->nullable();
             $table->timestamp('end_time')->nullable();
             $table->foreignId('created_by')->constrained('users')->onDelete('cascade');

@@ -1,3 +1,393 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    font-family: theme('fontFamily.sans');
+  }
+
+  ::selection {
+    background-color: theme('colors.neutral.900');
+    color: white;
+  }
+}
+
+/* ==================================================================== */
+/* Modernist design system — scoped to the public pages via `.modernist`.
+   Ported from the EventPro Claude Design canvas. Sharp corners, 2px
+   dividers, grayscale imagery, Archivo type, warm off-white ground.     */
+/* ==================================================================== */
+
+:root {
+  --color-bg: #f3f2f2;
+  --color-surface: #eae9e9;
+  --color-text: #201e1d;
+  --color-accent: #ec3013;
+  --color-accent-2: #e15b47;
+  --color-divider: color-mix(in srgb, #201e1d 40%, transparent);
+
+  --color-neutral-100: #f8f4f4;
+  --color-neutral-200: #eae7e7;
+  --color-neutral-300: #d7d3d3;
+  --color-neutral-400: #bab6b6;
+  --color-neutral-500: #9b9797;
+  --color-neutral-600: #7d7979;
+  --color-neutral-700: #605d5d;
+  --color-neutral-800: #444141;
+  --color-neutral-900: #2d2b2b;
+
+  --color-accent-100: #fff2ef;
+  --color-accent-200: #ffe0d9;
+  --color-accent-600: #dd2b0f;
+  --color-accent-700: #ae1800;
+  --color-accent-800: #7c1405;
+  --color-accent-2-100: #fff2ef;
+  --color-accent-2-800: #71261b;
+
+  --font-heading: 'Archivo', 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-body: 'Archivo', 'Inter', ui-sans-serif, system-ui, sans-serif;
+}
+
+.modernist {
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.55;
+  text-wrap: pretty;
+  overflow-x: hidden;
+}
+.modernist h1,
+.modernist h2 {
+  overflow-wrap: break-word;
+}
+.modernist *,
+.modernist *::before,
+.modernist *::after {
+  box-sizing: border-box;
+}
+.modernist h1,
+.modernist h2,
+.modernist h3,
+.modernist h4,
+.modernist h5,
+.modernist h6 {
+  font-family: var(--font-heading);
+  font-weight: 800;
+  line-height: 1.12;
+  letter-spacing: -0.015em;
+  margin: 0;
+}
+.modernist p {
+  margin: 0;
+}
+.modernist a {
+  color: var(--color-accent-700);
+  text-decoration: none;
+}
+.modernist a:hover {
+  color: var(--color-accent);
+}
+.modernist img {
+  display: block;
+  max-width: 100%;
+}
+.modernist :focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+.modernist ::selection {
+  background: color-mix(in srgb, var(--color-accent) 30%, transparent);
+  color: inherit;
+}
+
+/* buttons */
+.modernist .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  text-decoration: none;
+  font-family: var(--font-heading);
+  font-weight: 800;
+  font-size: 14px;
+  line-height: 1.2;
+  color: var(--color-text);
+  background: transparent;
+  border: 1px solid transparent;
+  padding: 9px 16px;
+  border-radius: 0;
+  white-space: nowrap;
+}
+.modernist .btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.modernist .btn-primary {
+  background: var(--color-accent);
+  color: var(--color-bg);
+}
+.modernist .btn-primary:hover {
+  background: var(--color-accent-600);
+  color: var(--color-bg);
+}
+.modernist .btn-secondary {
+  border-color: var(--color-divider);
+}
+.modernist .btn-secondary:hover {
+  background: color-mix(in srgb, var(--color-text) 7%, transparent);
+}
+.modernist .btn-ghost {
+  color: var(--color-accent);
+  padding-inline: 4px;
+}
+.modernist .btn-ghost:hover {
+  background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+  color: var(--color-accent);
+}
+.modernist .btn-block {
+  width: 100%;
+  margin-top: 8px;
+}
+
+/* forms */
+.modernist .field > label {
+  display: block;
+  font-size: 12px;
+  margin-bottom: 5px;
+  color: color-mix(in srgb, var(--color-text) 70%, transparent);
+}
+.modernist .input {
+  width: 100%;
+  min-height: 36px;
+  padding: 6px 10px;
+  font: inherit;
+  font-size: 14px;
+  color: var(--color-text);
+  caret-color: var(--color-accent);
+  background: var(--color-surface);
+  border: 1px solid var(--color-divider);
+  border-radius: 0;
+}
+.modernist .input::placeholder {
+  color: var(--color-neutral-500);
+}
+.modernist .input:focus-visible {
+  border-color: var(--color-accent);
+  outline-offset: 0;
+}
+
+/* tags */
+.modernist .tag {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  padding: 3px 10px;
+  border-radius: 0;
+}
+.modernist .tag-accent {
+  background: var(--color-accent-100);
+  color: var(--color-accent-800);
+}
+.modernist .tag-neutral {
+  background: var(--color-neutral-100);
+  color: var(--color-neutral-800);
+}
+.modernist .tag-outline {
+  border: 1px solid var(--color-accent);
+  color: var(--color-accent);
+}
+
+/* nav */
+.modernist .nav {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 12px clamp(20px, 5vw, 64px);
+  border-bottom: 2px solid var(--color-divider);
+  background: var(--color-bg);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+.modernist .nav-brand {
+  font-family: var(--font-heading);
+  font-weight: 800;
+  font-size: 18px;
+  margin-right: auto;
+  cursor: pointer;
+  color: var(--color-text);
+}
+
+/* structure */
+.modernist .ep-wrap {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding-inline: clamp(20px, 5vw, 64px);
+}
+.modernist .ep-rule {
+  height: 2px;
+  border: 0;
+  margin: 0;
+  background: var(--color-divider);
+}
+.modernist .ep-kick {
+  display: block;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-accent-700);
+  margin: 0 0 12px;
+}
+.modernist .ep-h2 {
+  font-family: var(--font-heading);
+  font-weight: 800;
+  font-size: clamp(26px, 3vw, 34px);
+  line-height: 1.1;
+  letter-spacing: -0.015em;
+  margin: 0;
+}
+.modernist .ep-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 2px;
+  border: 2px solid var(--color-divider);
+}
+.modernist .ep-grid > * {
+  outline: 2px solid var(--color-divider);
+}
+.modernist .ep-grid-wide {
+  grid-template-columns: repeat(auto-fill, minmax(440px, 1fr));
+}
+.modernist .ep-card {
+  background: var(--color-neutral-100);
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  color: var(--color-text);
+}
+.modernist .ep-card:hover {
+  color: var(--color-text);
+}
+.modernist .ep-card:hover .ep-title {
+  color: var(--color-accent);
+}
+.modernist .ep-title {
+  font-family: var(--font-heading);
+  font-weight: 800;
+  font-size: 19px;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+.modernist .ep-meta {
+  display: flex;
+  gap: 8px;
+  font-size: 13.5px;
+  color: var(--color-neutral-700);
+  margin: 0;
+}
+.modernist .ep-rail {
+  display: flex;
+  gap: 2px;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+  border: 2px solid var(--color-divider);
+  background: var(--color-divider);
+}
+.modernist .ep-rail::-webkit-scrollbar {
+  display: none;
+}
+.modernist .ep-nav-link {
+  font-size: 14px;
+  white-space: nowrap;
+  color: var(--color-text);
+  cursor: pointer;
+  background: none;
+  border: 0;
+  padding: 0;
+  font-family: var(--font-body);
+}
+.modernist .ep-nav-link:hover {
+  color: var(--color-accent);
+}
+.modernist .grayscale {
+  filter: grayscale(1) contrast(1.08);
+}
+
+/* responsive grids */
+.modernist .ep-hero-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  gap: clamp(24px, 5vw, 72px);
+  align-items: end;
+}
+.modernist .ep-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: clamp(28px, 4vw, 72px);
+  align-items: start;
+}
+.modernist .ep-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
+}
+.modernist .ep-search {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1.4fr) auto;
+  gap: 2px;
+  background: var(--color-divider);
+  border: 2px solid var(--color-divider);
+}
+.modernist .ep-steps-row {
+  display: grid;
+  grid-template-columns: 80px minmax(0, 320px) minmax(0, 1fr);
+  gap: 16px clamp(24px, 4vw, 64px);
+  align-items: baseline;
+}
+.modernist .ep-footer-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) repeat(3, minmax(0, 1fr));
+  gap: 32px;
+}
+.modernist .ep-cta-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 32px;
+  align-items: end;
+}
+.modernist .ep-cols-2 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+}
+
+@media (max-width: 900px) {
+  .modernist .ep-hero-grid,
+  .modernist .ep-split,
+  .modernist .ep-cta-grid,
+  .modernist .ep-search,
+  .modernist .ep-steps-row {
+    grid-template-columns: 1fr;
+  }
+  .modernist .ep-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .modernist .ep-footer-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+@media (max-width: 720px) {
+  .modernist .ep-hide-sm {
+    display: none !important;
+  }
+}
