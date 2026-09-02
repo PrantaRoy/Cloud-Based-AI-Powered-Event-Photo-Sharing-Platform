@@ -11,15 +11,15 @@ use Illuminate\Http\Response;
 class EventQrController extends Controller
 {
     /**
-     * Return an SVG QR code that encodes the event's public shareable URL.
+     * Return an SVG QR code that encodes the event's "add your photos" URL.
      *
      * Public by design: it only encodes a URL, and the page it points to
-     * enforces the event's privacy. Returns a raw image, not the standard
-     * JSON envelope.
+     * enforces auth + the event's privacy (sign in, then join or upload).
+     * Returns a raw image, not the standard JSON envelope.
      */
     public function __invoke(Request $request, Event $event): Response
     {
-        $url = rtrim((string) config('app.frontend_url'), '/').'/e/'.$event->slug;
+        $url = rtrim((string) config('app.frontend_url'), '/').'/e/'.$event->slug.'/upload';
 
         $svg = QrCodeGenerator::svg($url);
 

@@ -63,6 +63,29 @@ class EventShareTest extends TestCase
             ->assertJsonPath('data.qr_code_url', route('events.qr', $event->slug));
     }
 
+    public function test_single_event_reports_the_callers_membership_status(): void
+    {
+        $organiser = $this->actingAsUser(['role' => 'organiser']);
+        $event = app(EventRepository::class)->create([
+            'name' => 'Membership Status Event',
+            'event_date' => '2026-08-01T18:00:00+00:00',
+            'venue' => 'Auckland',
+            'privacy' => 'public',
+            'status' => 'active',
+        ], $organiser->id, $organiser->name, $organiser->email);
+
+        $this->getJson("/api/events/{$event->slug}")
+            ->assertOk()
+            ->assertJsonPath('data.my_status', 'approved');
+
+        $this->actingAsUser();
+
+        $this->getJson("/api/events/{$event->slug}")
+            ->assertOk()
+            ->assertJsonPath('data.my_status', null)
+            ->assertJsonPath('data.my_registered_at', null);
+    }
+
     public function test_qr_endpoint_returns_an_svg_without_authentication(): void
     {
         $event = $this->makeEvent();

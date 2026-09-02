@@ -13,6 +13,7 @@ import { MyPhotosPage } from '../pages/dashboard/MyPhotosPage'
 import { EventDetailsPage } from '../pages/events/EventDetailsPage'
 import { EventEditPage } from '../pages/events/EventEditPage'
 import { PublicEventPage } from '../pages/events/PublicEventPage'
+import { EventUploadPage } from '../pages/events/EventUploadPage'
 import { AlbumDetailPage } from '../pages/albums/AlbumDetailPage'
 import { ProtectedRoute } from './ProtectedRoute'
 
@@ -24,6 +25,7 @@ export function AppRouter() {
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/how-it-works" element={<HowItWorksPage />} />
       <Route path="/privacy" element={<PrivacyPage />} />
+      <Route path="/e/:slug/upload" element={<EventUploadPage />} />
       <Route path="/e/:slug" element={<PublicEventPage />} />
       <Route
         path="/dashboard"

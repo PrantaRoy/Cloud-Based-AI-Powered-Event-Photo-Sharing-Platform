@@ -69,6 +69,7 @@ class EventController extends Controller
             foreach ($events as $event) {
                 $membership = $memberships->get($event->id);
                 $event->my_registered_at = $membership['registered_at'] ?? null;
+                $event->my_status = $membership['status'] ?? null;
             }
 
             return $this->apiSuccess('Event List', EventResource::collection($events));
@@ -112,9 +113,15 @@ class EventController extends Controller
         try {
             Gate::authorize('view', $event);
 
+            $resource = $this->events->hydrate([$event])[0];
+
+            $membership = $this->members->find($event->id, $request->user()->id);
+            $resource->my_registered_at = $membership?->registered_at;
+            $resource->my_status = $membership?->status;
+
             return $this->apiSuccess(
                 'Event fetched successfully',
-                new EventResource($this->events->hydrate([$event])[0]),
+                new EventResource($resource),
             );
         } catch (AuthorizationException $e) {
             return $this->apiError($e->getMessage(), 403);

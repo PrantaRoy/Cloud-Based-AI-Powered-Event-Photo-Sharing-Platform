@@ -32,6 +32,7 @@ export interface EventResource {
   reg_auto_approve: boolean
   thumbnail_url: string | null
   my_registered_at: string | null
+  my_status: 'pending' | 'approved' | 'rejected' | null
   organiser: UserSummary
   creator: UserSummary
   participants_count: number

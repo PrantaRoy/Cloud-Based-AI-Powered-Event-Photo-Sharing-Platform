@@ -63,6 +63,8 @@ class Event
 
     public ?string $my_registered_at = null;
 
+    public ?string $my_status = null;
+
     public ?float $distance_km = null;
 
     /**

@@ -81,7 +81,9 @@ export function EventDetailsPage() {
   if (!event) return null
 
   const canManage = user !== null && (user.role === 'admin' || user.id === event.organiser?.id || user.id === event.creator?.id)
-  const canUpload = canManage || event.my_registered_at !== null
+  const isApproved = event.my_status === 'approved'
+  const isPending = event.my_status === 'pending'
+  const canUpload = canManage || isApproved
 
   return (
     <div className="flex flex-col gap-6">
@@ -106,8 +108,14 @@ export function EventDetailsPage() {
             {event.participants_count} participants · {event.media_count} photos
           </p>
           <div className="mt-2 flex flex-wrap items-center gap-2">
-            {event.my_registered_at ? (
-              <p className="text-sm text-gray-600">Joined on {formatDate(event.my_registered_at)}</p>
+            {canManage ? null : isApproved ? (
+              <Button variant="success" disabled>
+                ✓ Joined
+              </Button>
+            ) : isPending ? (
+              <span className="border border-amber-400 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-700">
+                Join request pending approval
+              </span>
             ) : (
               <Button onClick={handleJoin} disabled={joining}>
                 {joining ? 'Joining…' : 'Join event'}
@@ -125,7 +133,11 @@ export function EventDetailsPage() {
       <div className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
           <h2 className="text-base font-semibold text-black">Photos</h2>
-          {canUpload && <PhotoUploadButton onUpload={handleUpload} />}
+          {canUpload ? (
+            <PhotoUploadButton onUpload={handleUpload} />
+          ) : isPending ? (
+            <p className="text-sm text-gray-500">You can add photos once the organiser approves your request.</p>
+          ) : null}
         </div>
         {photos.length === 0 ? (
           <EmptyState title="No photos yet" />

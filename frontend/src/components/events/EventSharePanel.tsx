@@ -68,6 +68,7 @@ export function EventSharePanel({ event }: { event: ShareableEvent }) {
           height={200}
           className="h-[200px] w-[200px]"
         />
+        <p className="text-center text-xs text-gray-500">Scan to join and add photos to this event.</p>
         <div className="flex gap-2">
           <Button variant="secondary" onClick={handleDownload} disabled={downloading}>
             {downloading ? 'Preparing…' : 'Download QR'}
