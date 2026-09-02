@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Albums;
 
+use App\Rules\MediaExists;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -14,7 +15,7 @@ class AttachAlbumMediaRequest extends FormRequest
     {
         return [
             'event_media_ids' => ['required', 'array', 'min:1'],
-            'event_media_ids.*' => ['integer', 'exists:event_media,id'],
+            'event_media_ids.*' => ['integer', new MediaExists],
         ];
     }
 }

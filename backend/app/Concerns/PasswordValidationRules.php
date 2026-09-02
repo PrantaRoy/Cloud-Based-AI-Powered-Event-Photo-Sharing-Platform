@@ -24,6 +24,8 @@ trait PasswordValidationRules
      */
     protected function currentPasswordRules(): array
     {
-        return ['required', 'string', 'current_password'];
+        // Verified explicitly in PasswordController@update via Hash::check —
+        // the `current_password` rule needs the session guard, which is gone.
+        return ['required', 'string'];
     }
 }

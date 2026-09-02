@@ -68,6 +68,20 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | JWT signing secret
+    |--------------------------------------------------------------------------
+    |
+    | HS256 secret used to sign the stateless API tokens issued at login
+    | (replaces Sanctum). Falls back to APP_KEY when unset.
+    |
+    */
+
+    'jwt_secret' => env('JWT_SECRET') ?: env('APP_KEY'),
+
+    'jwt_ttl_days' => (int) env('JWT_TTL_DAYS', 7),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Timezone
     |--------------------------------------------------------------------------
     |

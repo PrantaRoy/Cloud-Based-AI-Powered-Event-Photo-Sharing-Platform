@@ -2,104 +2,93 @@
 
 namespace App\Models;
 
-use App\Concerns\GeneratesUniqueEventSlugs;
-use Database\Factories\EventFactory;
-use Illuminate\Database\Eloquent\Attributes\Fillable;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
-
-#[Fillable([
-    'name',
-    'slug',
-    'event_date',
-    'venue',
-    'longitude',
-    'latitude',
-    'privacy',
-    'status',
-    'start_time',
-    'end_time',
-    'created_by',
-    'reg_auto_approve',
-    'organiser_id',
-    'thumbnail_s3_path',
-])]
-class Event extends Model
+/**
+ * Plain data object hydrated from a DynamoDB `EVENT#<id> / META` item.
+ * Persistence lives in App\Repositories\EventRepository.
+ */
+class Event
 {
-    /** @use HasFactory<EventFactory> */
-    use GeneratesUniqueEventSlugs, HasFactory;
-
+    /** Maps the frontend status-group filter to concrete status values. */
     public const STATUS_GROUPS = [
         'upcoming' => ['active', 'scheduled'],
         'ongoing' => ['ongoing'],
         'archived' => ['finished', 'cancelled', 'archived'],
     ];
 
-    protected function casts(): array
-    {
-        return [
-            'event_date' => 'datetime',
-            'start_time' => 'datetime',
-            'end_time' => 'datetime',
-            'latitude' => 'float',
-            'longitude' => 'float',
-            'reg_auto_approve' => 'boolean',
-        ];
-    }
+    public int $id;
 
-    protected static function booted(): void
-    {
-        static::creating(function (Event $event) {
-            if (empty($event->slug)) {
-                $event->slug = static::generateUniqueEventSlug((string) $event->name);
-            }
-        });
-    }
+    public string $name;
+
+    public string $slug;
+
+    public string $event_date;
+
+    public string $venue;
+
+    public ?float $latitude = null;
+
+    public ?float $longitude = null;
+
+    public string $privacy = 'public';
+
+    public string $status = 'active';
+
+    public ?string $start_time = null;
+
+    public ?string $end_time = null;
+
+    public int $created_by;
+
+    public int $organiser_id;
+
+    public bool $reg_auto_approve = true;
+
+    public ?string $thumbnail_s3_path = null;
+
+    public ?string $created_at = null;
+
+    public ?string $updated_at = null;
+
+    // --- hydrated extras (populated by the repository, never persisted) ---
+
+    /** @var array{id: int, name: string, email: string}|null */
+    public ?array $organiser = null;
+
+    /** @var array{id: int, name: string, email: string}|null */
+    public ?array $creator = null;
+
+    public int $participants_count = 0;
+
+    public int $media_count = 0;
+
+    public ?string $my_registered_at = null;
+
+    public ?float $distance_km = null;
 
     /**
-     * Resolve route-model bindings by slug, falling back to the numeric id so
-     * existing id-based links keep working.
+     * @param  array<string, mixed>  $item
      */
-    public function resolveRouteBinding($value, $field = null): ?Model
+    public static function fromItem(array $item): self
     {
-        return $this->where('slug', $value)
-            ->when(is_numeric($value), fn (Builder $query) => $query->orWhere('id', $value))
-            ->firstOrFail();
-    }
+        $event = new self;
+        $event->id = (int) $item['id'];
+        $event->name = (string) $item['name'];
+        $event->slug = (string) $item['slug'];
+        $event->event_date = (string) $item['event_date'];
+        $event->venue = (string) $item['venue'];
+        $event->latitude = isset($item['latitude']) ? (float) $item['latitude'] : null;
+        $event->longitude = isset($item['longitude']) ? (float) $item['longitude'] : null;
+        $event->privacy = (string) ($item['privacy'] ?? 'public');
+        $event->status = (string) ($item['status'] ?? 'active');
+        $event->start_time = $item['start_time'] ?? null;
+        $event->end_time = $item['end_time'] ?? null;
+        $event->created_by = (int) $item['created_by'];
+        $event->organiser_id = (int) $item['organiser_id'];
+        $event->reg_auto_approve = (bool) ($item['reg_auto_approve'] ?? true);
+        $event->thumbnail_s3_path = $item['thumbnail_s3_path'] ?? null;
+        $event->created_at = $item['created_at'] ?? null;
+        $event->updated_at = $item['updated_at'] ?? null;
 
-    public function scopeVisibleTo(Builder $query, User $user): Builder
-    {
-        if ($user->role === 'admin') {
-            return $query;
-        }
-
-        return $query->where(function (Builder $query) use ($user) {
-            $query->where('privacy', '!=', 'private')
-                ->orWhere('organiser_id', $user->id)
-                ->orWhereHas('participants', fn ($query) => $query->where('user_id', $user->id));
-        });
-    }
-
-    public function organiser(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'organiser_id');
-    }
-
-    public function creator(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'created_by');
-    }
-
-    public function participants(): HasMany
-    {
-        return $this->hasMany(EventParticipent::class);
-    }
-
-    public function media(): HasMany
-    {
-        return $this->hasMany(EventMedia::class);
+        return $event;
     }
 }

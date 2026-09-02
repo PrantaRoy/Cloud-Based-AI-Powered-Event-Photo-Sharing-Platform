@@ -4,17 +4,18 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\CheckEmailRequest;
-use App\Models\User;
+use App\Repositories\UserRepository;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Throwable;
 
 class EmailCheckController extends Controller
 {
-    public function check(CheckEmailRequest $request)
+    public function check(CheckEmailRequest $request, UserRepository $users): JsonResponse
     {
         try {
-            $exists = User::where('email', $request->validated('email'))->exists();
+            $exists = $users->findByEmail($request->validated('email')) !== null;
 
             return $this->apiSuccess('Email checked successfully', ['exists' => $exists]);
         } catch (ValidationException $e) {

@@ -3,13 +3,16 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\PhotoSearchRequest;
-use Illuminate\Validation\ValidationException;
-use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
+use Illuminate\Http\JsonResponse;
 use Throwable;
 
 class PhotoSearchController extends Controller
 {
-    public function search(PhotoSearchRequest $request)
+    /**
+     * Selfie-based photo search. The AI pipeline (Lambda + face recognition)
+     * is designed but not deployed for this demo — see the architecture doc.
+     */
+    public function search(PhotoSearchRequest $request): JsonResponse
     {
         try {
             $request->validated();
@@ -18,10 +21,6 @@ class PhotoSearchController extends Controller
                 'matches' => [],
                 'status' => 'coming_soon',
             ]);
-        } catch (ValidationException $e) {
-            return $this->apiError($e->getMessage(), 422, $e->errors());
-        } catch (HttpExceptionInterface $e) {
-            return $this->apiError($e->getMessage() ?: 'Request failed', $e->getStatusCode());
         } catch (Throwable $e) {
             report($e);
 

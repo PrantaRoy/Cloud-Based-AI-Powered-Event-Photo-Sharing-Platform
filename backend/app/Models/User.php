@@ -2,63 +2,97 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
-use App\Concerns\HasTeams;
-use Database\Factories\UserFactory;
-use Illuminate\Database\Eloquent\Attributes\Fillable;
-use Illuminate\Database\Eloquent\Attributes\Hidden;
-use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Foundation\Auth\User as Authenticatable;
-use Illuminate\Notifications\Notifiable;
-use Illuminate\Support\Carbon;
-use Laravel\Fortify\Contracts\PasskeyUser;
-use Laravel\Fortify\PasskeyAuthenticatable;
-use Laravel\Fortify\TwoFactorAuthenticatable;
-use Laravel\Sanctum\HasApiTokens;
+use Illuminate\Contracts\Auth\Authenticatable;
 
 /**
- * @property int $id
- * @property string $name
- * @property string $email
- * @property Carbon|null $email_verified_at
- * @property string $password
- * @property string|null $two_factor_secret
- * @property string|null $two_factor_recovery_codes
- * @property Carbon|null $two_factor_confirmed_at
- * @property string|null $remember_token
- * @property int|null $current_team_id
- * @property Carbon|null $created_at
- * @property Carbon|null $updated_at
- * @property-read Team|null $currentTeam
- * @property-read Collection<int, Team> $ownedTeams
- * @property-read Collection<int, Membership> $teamMemberships
- * @property-read Collection<int, Team> $teams
+ * Plain data object hydrated from a DynamoDB `USER#<id> / PROFILE` item.
+ *
+ * Not an Eloquent model — there is no relational database. Persistence lives
+ * in App\Repositories\UserRepository.
  */
-#[Fillable(['name', 'email', 'password', 'current_team_id', 'role', 'profile_photo_s3'])]
-#[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
-class User extends Authenticatable implements PasskeyUser
+class User implements Authenticatable
 {
-    /** @use HasFactory<UserFactory> */
-    use HasApiTokens, HasFactory, HasTeams, Notifiable, PasskeyAuthenticatable, TwoFactorAuthenticatable;
+    public int $id;
+
+    public string $name;
+
+    public string $email;
+
+    public ?string $email_verified_at = null;
+
+    public string $password = '';
+
+    public string $role = 'visitor';
+
+    public ?string $profile_photo_s3 = null;
+
+    public ?string $created_at = null;
+
+    public ?string $updated_at = null;
 
     /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
+     * @param  array<string, mixed>  $item
      */
-    protected function casts(): array
+    public static function fromItem(array $item): self
     {
-        return [
-            'email_verified_at' => 'datetime',
-            'password' => 'hashed',
-            'two_factor_confirmed_at' => 'datetime',
-        ];
+        $user = new self;
+        $user->id = (int) $item['id'];
+        $user->name = (string) $item['name'];
+        $user->email = (string) $item['email'];
+        $user->email_verified_at = $item['email_verified_at'] ?? null;
+        $user->password = (string) ($item['password'] ?? '');
+        $user->role = (string) ($item['role'] ?? 'visitor');
+        $user->profile_photo_s3 = $item['profile_photo_s3'] ?? null;
+        $user->created_at = $item['created_at'] ?? null;
+        $user->updated_at = $item['updated_at'] ?? null;
+
+        return $user;
     }
 
-    public function albums(): HasMany
+    /**
+     * Compact form embedded in other resources (organiser, uploader, …).
+     *
+     * @return array{id: int, name: string, email: string}
+     */
+    public function summary(): array
     {
-        return $this->hasMany(Album::class);
+        return ['id' => $this->id, 'name' => $this->name, 'email' => $this->email];
+    }
+
+    // --- Authenticatable -------------------------------------------------
+
+    public function getAuthIdentifierName(): string
+    {
+        return 'id';
+    }
+
+    public function getAuthIdentifier(): int
+    {
+        return $this->id;
+    }
+
+    public function getAuthPasswordName(): string
+    {
+        return 'password';
+    }
+
+    public function getAuthPassword(): string
+    {
+        return $this->password;
+    }
+
+    public function getRememberToken(): string
+    {
+        return '';
+    }
+
+    public function setRememberToken($value): void
+    {
+        // Stateless JWT auth — no remember token.
+    }
+
+    public function getRememberTokenName(): ?string
+    {
+        return null;
     }
 }

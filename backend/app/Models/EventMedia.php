@@ -2,33 +2,46 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Attributes\Fillable;
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
-
-#[Fillable([
-    'event_id',
-    'file_name',
-    'original_s3_path',
-    'thumbnail_s3_path',
-    'uploaded_by',
-    'processing_status',
-])]
-class EventMedia extends Model
+/**
+ * Plain data object hydrated from a DynamoDB `EVENT#<id> / PHOTO#…` item.
+ * Persistence lives in App\Repositories\PhotoRepository.
+ */
+class EventMedia
 {
-    public function event(): BelongsTo
-    {
-        return $this->belongsTo(Event::class);
-    }
+    public int $id;
 
-    public function uploader(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'uploaded_by');
-    }
+    public int $event_id;
 
-    public function albums(): BelongsToMany
+    public string $file_name;
+
+    public string $original_s3_path;
+
+    public ?string $thumbnail_s3_path = null;
+
+    public int $uploaded_by;
+
+    public string $processing_status = 'completed';
+
+    public ?string $created_at = null;
+
+    /** @var array{id: int, name: string, email: string}|null */
+    public ?array $uploader = null;
+
+    /**
+     * @param  array<string, mixed>  $item
+     */
+    public static function fromItem(array $item): self
     {
-        return $this->belongsToMany(Album::class, 'album_event_media')->withTimestamps()->withPivot('added_at');
+        $media = new self;
+        $media->id = (int) $item['id'];
+        $media->event_id = (int) $item['event_id'];
+        $media->file_name = (string) $item['file_name'];
+        $media->original_s3_path = (string) $item['original_s3_path'];
+        $media->thumbnail_s3_path = $item['thumbnail_s3_path'] ?? null;
+        $media->uploaded_by = (int) $item['uploaded_by'];
+        $media->processing_status = (string) ($item['processing_status'] ?? 'completed');
+        $media->created_at = $item['created_at'] ?? null;
+
+        return $media;
     }
 }

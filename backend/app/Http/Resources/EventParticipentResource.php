@@ -2,9 +2,13 @@
 
 namespace App\Http\Resources;
 
+use App\Models\EventParticipent;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
+/**
+ * @mixin EventParticipent
+ */
 class EventParticipentResource extends JsonResource
 {
     /**
@@ -18,7 +22,7 @@ class EventParticipentResource extends JsonResource
             'registered_at' => $this->registered_at,
             'approved_at' => $this->approved_at,
             'email_notify' => $this->email_notify,
-            'user' => new UserSummaryResource($this->whenLoaded('user')),
+            'user' => $this->user,
         ];
     }
 }

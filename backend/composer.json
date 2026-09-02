@@ -11,17 +11,15 @@
     "require": {
         "php": "^8.3",
         "aws/aws-sdk-php": "^3.393",
+        "bacon/bacon-qr-code": "^3.0",
+        "fakerphp/faker": "^1.24",
         "firebase/php-jwt": "^7.1",
-        "inertiajs/inertia-laravel": "^3.0",
         "laravel/chisel": "^0.1.0",
-        "laravel/fortify": "^1.37.2",
         "laravel/framework": "^13.17",
-        "laravel/sanctum": "^4.0",
         "laravel/tinker": "^3.0",
-        "laravel/wayfinder": "^0.1.14"
+        "league/flysystem-aws-s3-v3": "^3.0"
     },
     "require-dev": {
-        "fakerphp/faker": "^1.24",
         "larastan/larastan": "^3.9",
         "laravel/pail": "^1.2.5",
         "laravel/pao": "^1.0.6",
@@ -33,9 +31,7 @@
     },
     "autoload": {
         "psr-4": {
-            "App\\": "app/",
-            "Database\\Factories\\": "database/factories/",
-            "Database\\Seeders\\": "database/seeders/"
+            "App\\": "app/"
         }
     },
     "autoload-dev": {
@@ -48,13 +44,11 @@
             "composer install",
             "@php -r \"file_exists('.env') || copy('.env.example', '.env');\"",
             "@php artisan key:generate",
-            "@php artisan migrate --force",
-            "npm install",
-            "npm run build"
+            "@php artisan dynamo:setup"
         ],
         "dev": [
             "Composer\\Config::disableProcessTimeout",
-            "@php artisan dev"
+            "@php artisan serve"
         ],
         "lint": [
             "pint --parallel"
@@ -62,15 +56,12 @@
         "lint:check": [
             "pint --parallel --test"
         ],
-        "ci:check": [
-            "Composer\\Config::disableProcessTimeout",
-            "npm run lint:check",
-            "npm run format:check",
-            "npm run types:check",
-            "@test"
-        ],
         "types:check": [
             "phpstan analyse"
+        ],
+        "ci:check": [
+            "Composer\\Config::disableProcessTimeout",
+            "@test"
         ],
         "test": [
             "@php artisan config:clear --ansi",
@@ -89,9 +80,7 @@
             "@php -r \"file_exists('.env') || copy('.env.example', '.env');\""
         ],
         "post-create-project-cmd": [
-            "@php artisan key:generate --ansi",
-            "@php -r \"file_exists('database/database.sqlite') || touch('database/database.sqlite');\"",
-            "@php artisan migrate --graceful --ansi"
+            "@php artisan key:generate --ansi"
         ],
         "pre-package-uninstall": [
             "Illuminate\\Foundation\\ComposerScripts::prePackageUninstall"

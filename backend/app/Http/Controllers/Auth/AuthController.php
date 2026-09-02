@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers\Auth;
 
-use App\Actions\Fortify\CreateNewUser;
+use App\Actions\Auth\RegisterUser;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Resources\UserProfileResource;
-use App\Models\User;
+use App\Repositories\UserRepository;
+use App\Support\Jwt\JwtManager;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Hash;
@@ -16,16 +18,19 @@ use Throwable;
 
 class AuthController extends Controller
 {
-    public function register(Request $request, CreateNewUser $createNewUser)
+    public function __construct(
+        private UserRepository $users,
+        private JwtManager $jwt,
+    ) {}
+
+    public function register(Request $request, RegisterUser $registerUser): JsonResponse
     {
         try {
-            $user = $createNewUser->create($request->all())->refresh();
-
-            $token = $user->createToken('api')->plainTextToken;
+            $user = $registerUser->create($request->all());
 
             return $this->apiSuccess('Registration successful', [
                 'user' => new UserProfileResource($user),
-                'token' => $token,
+                'token' => $this->jwt->issue($user),
             ], Response::HTTP_CREATED);
         } catch (ValidationException $e) {
             return $this->apiError($e->getMessage(), 422, $e->errors());
@@ -38,10 +43,10 @@ class AuthController extends Controller
         }
     }
 
-    public function login(LoginRequest $request)
+    public function login(LoginRequest $request): JsonResponse
     {
         try {
-            $user = User::where('email', $request->validated('email'))->first();
+            $user = $this->users->findByEmail($request->validated('email'));
 
             if (! $user || ! Hash::check($request->validated('password'), $user->password)) {
                 throw ValidationException::withMessages([
@@ -49,11 +54,9 @@ class AuthController extends Controller
                 ]);
             }
 
-            $token = $user->createToken('api')->plainTextToken;
-
             return $this->apiSuccess('Login successful', [
                 'user' => new UserProfileResource($user),
-                'token' => $token,
+                'token' => $this->jwt->issue($user),
             ]);
         } catch (ValidationException $e) {
             return $this->apiError($e->getMessage(), 422, $e->errors());
@@ -66,16 +69,9 @@ class AuthController extends Controller
         }
     }
 
-    public function logout(Request $request)
+    public function logout(): JsonResponse
     {
-        try {
-            $request->user()->currentAccessToken()->delete();
-
-            return $this->apiSuccess('Logout successful');
-        } catch (Throwable $e) {
-            report($e);
-
-            return $this->apiError($this->apiExceptionMessage($e, 'Logout failed'));
-        }
+        // Stateless JWT — nothing to revoke server-side. The client drops the token.
+        return $this->apiSuccess('Logout successful');
     }
 }

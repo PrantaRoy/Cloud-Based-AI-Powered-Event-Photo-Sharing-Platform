@@ -13,6 +13,12 @@ jobs:
   ci:
     runs-on: ubuntu-latest
 
+    services:
+      dynamodb:
+        image: amazon/dynamodb-local:latest
+        ports:
+          - 8001:8000
+
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -31,8 +37,14 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Setup Application
-        run: composer setup
+      - name: Install dependencies
+        working-directory: backend
+        run: |
+          composer install --no-interaction --no-progress
+          cp .env.example .env
+          php artisan key:generate
+          php artisan dynamo:create-table
 
-      - name: Run CI Checks
+      - name: Run CI checks
+        working-directory: backend
         run: composer ci:check

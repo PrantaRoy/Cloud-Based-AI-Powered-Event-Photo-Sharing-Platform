@@ -1,0 +1,75 @@
+# EventPro — full local stack: DynamoDB + Laravel API + React SPA.
+#
+#   docker compose up --build              # build + start everything
+#   docker compose run --rm seed           # load demo data (admin@eventpro.com / password)
+#   docker compose down                    # stop
+#
+# Open http://localhost:5173  (API on http://localhost:8000).
+# DynamoDB is in-memory — data resets when the stack stops.
+
+x-api-env: &api-env
+  APP_NAME: EventPro
+  APP_ENV: local
+  APP_KEY: base64:OEcETRdcWup2+wrZJvi11AMpURLgIZu/yazpHcqqk5I=
+  APP_DEBUG: "true"
+  APP_URL: http://localhost:8000
+  FRONTEND_URL: http://localhost:5173
+  LOG_CHANNEL: stderr
+  SESSION_DRIVER: array
+  CACHE_STORE: file
+  QUEUE_CONNECTION: sync
+  BROADCAST_CONNECTION: log
+  MAIL_MAILER: log
+  FILESYSTEM_DISK: public
+  JWT_SECRET: docker-demo-secret-change-me-please
+  AWS_ACCESS_KEY_ID: local
+  AWS_SECRET_ACCESS_KEY: local
+  AWS_DEFAULT_REGION: ap-southeast-2
+  DYNAMODB_TABLE: EventPhotoPlatform-local
+  DYNAMODB_REGION: ap-southeast-2
+  DYNAMODB_ENDPOINT: http://dynamodb:8000
+
+services:
+  dynamodb:
+    image: amazon/dynamodb-local:latest
+    command: -jar DynamoDBLocal.jar -sharedDb -inMemory
+    ports:
+      - "8001:8000"
+
+  # Creates the table (idempotent). Runs once on every `up`, then exits.
+  migrate:
+    build: ./backend
+    environment: *api-env
+    depends_on:
+      - dynamodb
+    restart: "no"
+    command: >
+      sh -c "until php artisan dynamo:create-table; do echo 'waiting for dynamodb...'; sleep 2; done"
+
+  # On-demand demo data:  docker compose run --rm seed
+  seed:
+    build: ./backend
+    environment: *api-env
+    depends_on:
+      - dynamodb
+    restart: "no"
+    profiles: ["tools"]
+    command: php artisan dynamo:seed --fresh
+
+  backend:
+    build: ./backend
+    environment: *api-env
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build: ./frontend
+    environment:
+      VITE_API_URL: http://localhost:8000/api
+    depends_on:
+      - backend
+    ports:
+      - "5173:5173"

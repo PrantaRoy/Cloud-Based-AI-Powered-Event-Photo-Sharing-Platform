@@ -24,7 +24,7 @@ Route::get('events/public/stats', [PublicEventController::class, 'stats'])->name
 Route::get('events/public/{event}', [PublicEventController::class, 'show'])->name('api.events.public.show');
 Route::get('events/{event}/qr', EventQrController::class)->name('events.qr');
 
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware('auth:api')->group(function () {
     Route::post('logout', [AuthController::class, 'logout'])->name('api.logout');
 
     Route::get('profile', [ProfileController::class, 'show'])->name('api.profile.show');

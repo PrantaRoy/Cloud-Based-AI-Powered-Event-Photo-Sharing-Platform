@@ -34,7 +34,7 @@ function scrollToId(id: string) {
 
 export function LandingPage() {
   const { isAuthenticated } = useAuth()
-  const createHref = isAuthenticated ? '/dashboard/events/organised' : '/login'
+  const createHref = isAuthenticated ? '/dashboard/events/organised' : '/register'
 
   const [q, setQ] = useState('')
   const [loc, setLoc] = useState('')
@@ -434,11 +434,11 @@ function Footer() {
         </FooterCol>
         <FooterCol title="Account">
           <Link to="/login">Log in</Link>
-          <Link to="/login">Register</Link>
+          <Link to="/register">Register</Link>
         </FooterCol>
         <FooterCol title="About">
-          <a href="#upcoming">How it works</a>
-          <a href="#upcoming">Privacy</a>
+          <Link to="/how-it-works">How it works</Link>
+          <Link to="/privacy">Privacy</Link>
         </FooterCol>
       </div>
       <hr className="ep-rule" />

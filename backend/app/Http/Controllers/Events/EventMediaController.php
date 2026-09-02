@@ -8,7 +8,9 @@ use App\Http\Requests\Events\StoreEventMediaRequest;
 use App\Http\Resources\EventMediaResource;
 use App\Models\Event;
 use App\Models\EventMedia;
+use App\Repositories\PhotoRepository;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
@@ -18,12 +20,14 @@ use Throwable;
 
 class EventMediaController extends Controller
 {
-    public function index(Event $event)
+    public function __construct(private PhotoRepository $photos) {}
+
+    public function index(Event $event): JsonResponse
     {
         try {
             Gate::authorize('view', $event);
 
-            $media = $event->media()->with('uploader')->latest()->paginate();
+            $media = $this->photos->hydrateUploaders($this->photos->listForEvent($event->id));
 
             return $this->apiSuccess('Event Photo List', EventMediaResource::collection($media));
         } catch (AuthorizationException $e) {
@@ -37,7 +41,7 @@ class EventMediaController extends Controller
         }
     }
 
-    public function store(StoreEventMediaRequest $request, Event $event, UploadEventMedia $uploadEventMedia)
+    public function store(StoreEventMediaRequest $request, Event $event, UploadEventMedia $uploadEventMedia): JsonResponse
     {
         try {
             Gate::authorize('uploadMedia', $event);
@@ -46,8 +50,8 @@ class EventMediaController extends Controller
 
             return $this->apiSuccess(
                 'Event photo uploaded successfully',
-                new EventMediaResource($media->load('uploader')),
-                Response::HTTP_CREATED
+                new EventMediaResource($this->photos->hydrateUploaders([$media])[0]),
+                Response::HTTP_CREATED,
             );
         } catch (ValidationException $e) {
             return $this->apiError($e->getMessage(), 422, $e->errors());
@@ -62,7 +66,7 @@ class EventMediaController extends Controller
         }
     }
 
-    public function destroy(Event $event, EventMedia $media)
+    public function destroy(Event $event, EventMedia $media): JsonResponse
     {
         try {
             abort_if($media->event_id !== $event->id, 404);
@@ -77,7 +81,7 @@ class EventMediaController extends Controller
                 Storage::delete($media->thumbnail_s3_path);
             }
 
-            $media->delete();
+            $this->photos->delete($media);
 
             return $this->apiSuccess('Event photo deleted successfully');
         } catch (AuthorizationException $e) {

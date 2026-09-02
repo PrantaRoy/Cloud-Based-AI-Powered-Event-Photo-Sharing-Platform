@@ -1,6 +1,9 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { LoginPage } from '../pages/auth/LoginPage'
+import { RegisterPage } from '../pages/auth/RegisterPage'
 import { LandingPage } from '../pages/landing/LandingPage'
+import { HowItWorksPage } from '../pages/public/HowItWorksPage'
+import { PrivacyPage } from '../pages/public/PrivacyPage'
 import { DashboardLayout } from '../pages/dashboard/DashboardLayout'
 import { AllEventsPage } from '../pages/dashboard/AllEventsPage'
 import { MyEventsPage } from '../pages/dashboard/MyEventsPage'
@@ -18,6 +21,9 @@ export function AppRouter() {
     <Routes>
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/register" element={<RegisterPage />} />
+      <Route path="/how-it-works" element={<HowItWorksPage />} />
+      <Route path="/privacy" element={<PrivacyPage />} />
       <Route path="/e/:slug" element={<PublicEventPage />} />
       <Route
         path="/dashboard"

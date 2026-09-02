@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { SubmitEvent } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Button } from '../../components/common/Button'
 import { Input } from '../../components/common/Input'
 import { ErrorBanner } from '../../components/common/ErrorBanner'
@@ -105,6 +105,13 @@ export function LoginPage() {
             </Button>
           </form>
         )}
+
+        <p className="mt-6 text-sm text-gray-600">
+          New to EventPro?{' '}
+          <Link to="/register" className="text-black underline hover:no-underline">
+            Create an account
+          </Link>
+        </p>
       </div>
     </div>
   )

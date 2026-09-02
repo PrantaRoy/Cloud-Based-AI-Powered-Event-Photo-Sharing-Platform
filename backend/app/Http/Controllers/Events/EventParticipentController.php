@@ -9,7 +9,9 @@ use App\Http\Requests\Events\UpdateEventParticipentStatusRequest;
 use App\Http\Resources\EventParticipentResource;
 use App\Models\Event;
 use App\Models\EventParticipent;
+use App\Repositories\MemberRepository;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
@@ -18,14 +20,17 @@ use Throwable;
 
 class EventParticipentController extends Controller
 {
-    public function index(Event $event)
+    public function __construct(private MemberRepository $members) {}
+
+    public function index(Event $event): JsonResponse
     {
         try {
             Gate::authorize('viewParticipants', $event);
 
-            $participants = $event->participants()->with('user')->paginate();
-
-            return $this->apiSuccess('Participant List', EventParticipentResource::collection($participants));
+            return $this->apiSuccess(
+                'Participant List',
+                EventParticipentResource::collection($this->members->listForEvent($event->id)),
+            );
         } catch (AuthorizationException $e) {
             return $this->apiError($e->getMessage(), 403);
         } catch (HttpExceptionInterface $e) {
@@ -37,7 +42,7 @@ class EventParticipentController extends Controller
         }
     }
 
-    public function store(RegisterEventParticipentRequest $request, Event $event, RegisterEventParticipent $registerEventParticipent)
+    public function store(RegisterEventParticipentRequest $request, Event $event, RegisterEventParticipent $registerEventParticipent): JsonResponse
     {
         try {
             Gate::authorize('register', $event);
@@ -45,13 +50,13 @@ class EventParticipentController extends Controller
             $participant = $registerEventParticipent->handle(
                 $event,
                 $request->user(),
-                $request->boolean('email_notify')
+                $request->boolean('email_notify'),
             );
 
             return $this->apiSuccess(
                 'Participant registered successfully',
-                new EventParticipentResource($participant->load('user')),
-                Response::HTTP_CREATED
+                new EventParticipentResource($participant),
+                Response::HTTP_CREATED,
             );
         } catch (ValidationException $e) {
             return $this->apiError($e->getMessage(), 422, $e->errors());
@@ -66,24 +71,16 @@ class EventParticipentController extends Controller
         }
     }
 
-    public function update(UpdateEventParticipentStatusRequest $request, Event $event, EventParticipent $participant)
+    public function update(UpdateEventParticipentStatusRequest $request, Event $event, EventParticipent $participant): JsonResponse
     {
         try {
             Gate::authorize('manageParticipant', $event);
 
             abort_if($participant->event_id !== $event->id, 404);
 
-            $status = $request->validated('status');
+            $updated = $this->members->updateStatus($event->id, $participant->user_id, $request->validated('status'));
 
-            $participant->update([
-                'status' => $status,
-                'approved_at' => $status === 'approved' ? now() : null,
-            ]);
-
-            return $this->apiSuccess(
-                'Participant status updated successfully',
-                new EventParticipentResource($participant->load('user'))
-            );
+            return $this->apiSuccess('Participant status updated successfully', new EventParticipentResource($updated));
         } catch (ValidationException $e) {
             return $this->apiError($e->getMessage(), 422, $e->errors());
         } catch (AuthorizationException $e) {

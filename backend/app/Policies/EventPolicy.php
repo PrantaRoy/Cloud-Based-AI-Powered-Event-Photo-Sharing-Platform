@@ -5,9 +5,12 @@ namespace App\Policies;
 use App\Models\Event;
 use App\Models\EventMedia;
 use App\Models\User;
+use App\Repositories\MemberRepository;
 
 class EventPolicy
 {
+    public function __construct(private MemberRepository $members) {}
+
     public function viewAny(User $user): bool
     {
         return true;
@@ -19,8 +22,7 @@ class EventPolicy
             return true;
         }
 
-        return $this->isOrganiser($user, $event)
-            || $event->participants()->where('user_id', $user->id)->exists();
+        return $this->isOrganiser($user, $event) || $this->members->isMember($event->id, $user->id);
     }
 
     public function create(User $user): bool
@@ -55,23 +57,12 @@ class EventPolicy
 
     public function uploadMedia(User $user, Event $event): bool
     {
-        if ($this->isOrganiser($user, $event)) {
-            return true;
-        }
-
-        return $event->participants()
-            ->where('user_id', $user->id)
-            ->where('status', 'approved')
-            ->exists();
+        return $this->isOrganiser($user, $event) || $this->members->isApprovedParticipant($event->id, $user->id);
     }
 
     public function deleteMedia(User $user, Event $event, EventMedia $media): bool
     {
-        if ($this->isOrganiser($user, $event)) {
-            return true;
-        }
-
-        return $media->uploaded_by === $user->id;
+        return $this->isOrganiser($user, $event) || $media->uploaded_by === $user->id;
     }
 
     protected function isOrganiser(User $user, Event $event): bool

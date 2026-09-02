@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
-import { login as apiLogin, logout as apiLogout } from '../api/auth'
+import { login as apiLogin, logout as apiLogout, register as apiRegister } from '../api/auth'
+import type { RegisterPayload } from '../api/auth'
 import { getProfile } from '../api/profile'
 import { ApiError, clearToken, hasToken, setToken, setUnauthorizedHandler } from '../api/client'
 import type { UserProfile } from '../types/user'
@@ -10,6 +11,7 @@ interface AuthContextValue {
   isLoading: boolean
   isAuthenticated: boolean
   login: (email: string, password: string) => Promise<void>
+  register: (payload: RegisterPayload) => Promise<void>
   logout: () => Promise<void>
   setUser: (user: UserProfile) => void
   refreshProfile: () => Promise<void>
@@ -67,6 +69,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUserState(result.user)
   }, [])
 
+  const register = useCallback(async (payload: RegisterPayload) => {
+    const result = await apiRegister(payload)
+    setToken(result.token)
+    setUserState(result.user)
+  }, [])
+
   const logout = useCallback(async () => {
     try {
       await apiLogout()
@@ -89,11 +97,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isLoading,
       isAuthenticated: user !== null,
       login,
+      register,
       logout,
       setUser: setUserState,
       refreshProfile,
     }),
-    [user, isLoading, login, logout, refreshProfile],
+    [user, isLoading, login, register, logout, refreshProfile],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

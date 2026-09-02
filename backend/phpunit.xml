@@ -23,9 +23,13 @@
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="BROADCAST_CONNECTION" value="null"/>
         <env name="CACHE_STORE" value="array"/>
-        <env name="DB_CONNECTION" value="sqlite"/>
-        <env name="DB_DATABASE" value=":memory:"/>
-        <env name="DB_URL" value=""/>
+        <env name="DYNAMODB_ENDPOINT" value="http://localhost:8001"/>
+        <env name="DYNAMODB_TABLE" value="EventPhotoPlatform-test"/>
+        <env name="AWS_ACCESS_KEY_ID" value="local"/>
+        <env name="AWS_SECRET_ACCESS_KEY" value="local"/>
+        <env name="AWS_DEFAULT_REGION" value="ap-southeast-2"/>
+        <env name="FILESYSTEM_DISK" value="s3"/>
+        <env name="JWT_SECRET" value="testing-secret-testing-secret-32b"/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>
