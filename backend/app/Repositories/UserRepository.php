@@ -54,6 +54,65 @@ class UserRepository extends BaseRepository
         return $user !== null && $user->id !== $exceptId;
     }
 
+    public function findByCognitoSub(string $sub): ?User
+    {
+        $pointer = $this->dynamo->getItem('COGNITO#'.$sub, 'LOCK');
+        if ($pointer === null || ! isset($pointer['user_id'])) {
+            return null;
+        }
+
+        return $this->find((int) $pointer['user_id']);
+    }
+
+    /**
+     * Mirror a Cognito identity into a local `USER#<int>` profile the first
+     * time we see it, keyed to the Cognito `sub` via a `COGNITO#<sub>` pointer.
+     */
+    public function createFromCognito(string $sub, string $email, string $name): User
+    {
+        $id = $this->nextId('user');
+        $now = $this->now();
+        $email = mb_strtolower(trim($email));
+
+        $profile = [
+            'PK' => $this->userPk($id),
+            'SK' => 'PROFILE',
+            'GSI1PK' => $this->emailKey($email),
+            'GSI1SK' => $this->userPk($id),
+            'entity_type' => 'user',
+            'id' => $id,
+            'name' => $name !== '' ? $name : $email,
+            'email' => $email,
+            'password' => '',
+            'role' => 'visitor',
+            'email_verified_at' => $now,
+            'profile_photo_s3' => null,
+            'cognito_sub' => $sub,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ];
+
+        try {
+            $this->dynamo->transactWrite([
+                ['Put' => [
+                    'Item' => ['PK' => 'COGNITO#'.$sub, 'SK' => 'LOCK', 'entity_type' => 'cognito_lock', 'user_id' => $id],
+                    'ConditionExpression' => 'attribute_not_exists(PK)',
+                ]],
+                ['Put' => ['Item' => ['PK' => $this->emailKey($email), 'SK' => 'LOCK', 'entity_type' => 'email_lock', 'user_id' => $id]]],
+                ['Put' => ['Item' => $profile]],
+            ]);
+        } catch (DynamoConflictException) {
+            // Concurrent first login — the other request won the pointer.
+            $existing = $this->findByCognitoSub($sub);
+            if ($existing !== null) {
+                return $existing;
+            }
+            throw new \RuntimeException('Failed to provision Cognito user.');
+        }
+
+        return User::fromItem($profile);
+    }
+
     /**
      * @param  array{name: string, email: string, password: string, role?: string}  $data
      *

@@ -2,35 +2,29 @@
 
 namespace App\Http\Controllers\Auth;
 
-use App\Actions\Auth\RegisterUser;
+use App\Auth\AuthBroker;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Resources\UserProfileResource;
-use App\Repositories\UserRepository;
-use App\Support\Jwt\JwtManager;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Throwable;
 
 class AuthController extends Controller
 {
-    public function __construct(
-        private UserRepository $users,
-        private JwtManager $jwt,
-    ) {}
+    public function __construct(private AuthBroker $auth) {}
 
-    public function register(Request $request, RegisterUser $registerUser): JsonResponse
+    public function register(Request $request): JsonResponse
     {
         try {
-            $user = $registerUser->create($request->all());
+            $result = $this->auth->register($request->all());
 
             return $this->apiSuccess('Registration successful', [
-                'user' => new UserProfileResource($user),
-                'token' => $this->jwt->issue($user),
+                'user' => new UserProfileResource($result['user']),
+                'token' => $result['token'],
             ], Response::HTTP_CREATED);
         } catch (ValidationException $e) {
             return $this->apiError($e->getMessage(), 422, $e->errors());
@@ -46,17 +40,11 @@ class AuthController extends Controller
     public function login(LoginRequest $request): JsonResponse
     {
         try {
-            $user = $this->users->findByEmail($request->validated('email'));
-
-            if (! $user || ! Hash::check($request->validated('password'), $user->password)) {
-                throw ValidationException::withMessages([
-                    'email' => [trans('auth.failed')],
-                ]);
-            }
+            $result = $this->auth->login($request->validated('email'), $request->validated('password'));
 
             return $this->apiSuccess('Login successful', [
-                'user' => new UserProfileResource($user),
-                'token' => $this->jwt->issue($user),
+                'user' => new UserProfileResource($result['user']),
+                'token' => $result['token'],
             ]);
         } catch (ValidationException $e) {
             return $this->apiError($e->getMessage(), 422, $e->errors());
@@ -69,9 +57,10 @@ class AuthController extends Controller
         }
     }
 
-    public function logout(): JsonResponse
+    public function logout(Request $request): JsonResponse
     {
-        // Stateless JWT — nothing to revoke server-side. The client drops the token.
+        $this->auth->logout($request->user());
+
         return $this->apiSuccess('Logout successful');
     }
 }

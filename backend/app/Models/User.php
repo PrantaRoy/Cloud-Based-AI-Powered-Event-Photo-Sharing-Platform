@@ -26,6 +26,8 @@ class User implements Authenticatable
 
     public ?string $profile_photo_s3 = null;
 
+    public ?string $cognito_sub = null;
+
     public ?string $created_at = null;
 
     public ?string $updated_at = null;
@@ -43,6 +45,7 @@ class User implements Authenticatable
         $user->password = (string) ($item['password'] ?? '');
         $user->role = (string) ($item['role'] ?? 'visitor');
         $user->profile_photo_s3 = $item['profile_photo_s3'] ?? null;
+        $user->cognito_sub = $item['cognito_sub'] ?? null;
         $user->created_at = $item['created_at'] ?? null;
         $user->updated_at = $item['updated_at'] ?? null;
 

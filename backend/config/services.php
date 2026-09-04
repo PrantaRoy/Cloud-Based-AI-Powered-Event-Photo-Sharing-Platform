@@ -28,6 +28,25 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Amazon Cognito
+    |--------------------------------------------------------------------------
+    |
+    | When COGNITO_USER_POOL_ID is set, the app authenticates through a Cognito
+    | user pool (sign-up, email, password policy, JWT issuance) instead of the
+    | built-in local JWT. Leave it blank for local/Docker/CI (local mode).
+    | Credentials come from the EC2 instance role — no keys here.
+    |
+    */
+
+    'cognito' => [
+        'region' => env('COGNITO_REGION', env('AWS_DEFAULT_REGION', 'ap-southeast-2')),
+        'user_pool_id' => env('COGNITO_USER_POOL_ID'),
+        'client_id' => env('COGNITO_CLIENT_ID'),
+        'client_secret' => env('COGNITO_CLIENT_SECRET'),
+    ],
+
     'slack' => [
         'notifications' => [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),

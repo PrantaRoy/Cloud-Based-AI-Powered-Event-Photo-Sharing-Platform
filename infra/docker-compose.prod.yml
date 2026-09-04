@@ -1,0 +1,28 @@
+# EventPro API — production stack for a single EC2 host.
+#
+# Only the Laravel API runs here. DynamoDB and S3 are real AWS services,
+# reached through the EC2 instance role (no static keys). The React SPA is
+# built separately and served from S3 + CloudFront.
+#
+#   cd /opt/eventpro
+#   docker compose -f infra/docker-compose.prod.yml up -d --build
+#
+# Reads /opt/eventpro/infra/.env  (written by ec2-user-data.sh from Secrets Manager).
+
+services:
+  api:
+    build:
+      context: ../backend
+    env_file:
+      - path: .env
+        required: true
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+    # Serve on 0.0.0.0:8000; the ALB target group points here.
+    healthcheck:
+      test: ["CMD", "php", "-r", "exit(@file_get_contents('http://127.0.0.1:8000/up') ? 0 : 1);"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s

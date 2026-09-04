@@ -1,0 +1,89 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "DynamoSingleTable",
+      "Effect": "Allow",
+      "Action": [
+        "dynamodb:GetItem",
+        "dynamodb:BatchGetItem",
+        "dynamodb:Query",
+        "dynamodb:PutItem",
+        "dynamodb:UpdateItem",
+        "dynamodb:DeleteItem",
+        "dynamodb:BatchWriteItem",
+        "dynamodb:ConditionCheckItem",
+        "dynamodb:Scan"
+      ],
+      "Resource": [
+        "arn:aws:dynamodb:ap-southeast-2:ACCOUNT_ID:table/EventPhotoPlatform-prod",
+        "arn:aws:dynamodb:ap-southeast-2:ACCOUNT_ID:table/EventPhotoPlatform-prod/index/*"
+      ]
+    },
+    {
+      "Sid": "DynamoCreateTableOnce",
+      "Effect": "Allow",
+      "Action": [
+        "dynamodb:CreateTable",
+        "dynamodb:DescribeTable",
+        "dynamodb:UpdateTimeToLive",
+        "dynamodb:DescribeTimeToLive"
+      ],
+      "Resource": "arn:aws:dynamodb:ap-southeast-2:ACCOUNT_ID:table/EventPhotoPlatform-prod"
+    },
+    {
+      "Sid": "MediaBucketObjects",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:DeleteObject"
+      ],
+      "Resource": "arn:aws:s3:::eventpro-media-ACCOUNT_ID/*"
+    },
+    {
+      "Sid": "MediaBucketList",
+      "Effect": "Allow",
+      "Action": "s3:ListBucket",
+      "Resource": "arn:aws:s3:::eventpro-media-ACCOUNT_ID"
+    },
+    {
+      "Sid": "Cognito",
+      "Effect": "Allow",
+      "Action": [
+        "cognito-idp:SignUp",
+        "cognito-idp:ConfirmSignUp",
+        "cognito-idp:ResendConfirmationCode",
+        "cognito-idp:ForgotPassword",
+        "cognito-idp:ConfirmForgotPassword",
+        "cognito-idp:AdminInitiateAuth",
+        "cognito-idp:AdminConfirmSignUp",
+        "cognito-idp:AdminGetUser",
+        "cognito-idp:AdminUpdateUserAttributes",
+        "cognito-idp:AdminSetUserPassword",
+        "cognito-idp:AdminUserGlobalSignOut"
+      ],
+      "Resource": "arn:aws:cognito-idp:ap-southeast-2:ACCOUNT_ID:userpool/POOL_ID"
+    },
+    {
+      "Sid": "Secrets",
+      "Effect": "Allow",
+      "Action": "secretsmanager:GetSecretValue",
+      "Resource": [
+        "arn:aws:secretsmanager:ap-southeast-2:ACCOUNT_ID:secret:eventpro/app-key-*",
+        "arn:aws:secretsmanager:ap-southeast-2:ACCOUNT_ID:secret:eventpro/cognito-client-secret-*"
+      ]
+    },
+    {
+      "Sid": "CloudWatchLogs",
+      "Effect": "Allow",
+      "Action": [
+        "logs:CreateLogGroup",
+        "logs:CreateLogStream",
+        "logs:PutLogEvents",
+        "logs:DescribeLogStreams"
+      ],
+      "Resource": "arn:aws:logs:ap-southeast-2:ACCOUNT_ID:log-group:/eventpro/*"
+    }
+  ]
+}
