@@ -54,4 +54,34 @@ return [
         ],
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Face matching (open-source dlib / face_recognition Lambda pipeline)
+    |--------------------------------------------------------------------------
+    |
+    | Leave FACE_SEARCH_LAMBDA_NAME / FACE_INDEX_QUEUE_URL blank for
+    | local / Docker / CI: uploads skip face indexing and the selfie search
+    | endpoint degrades to a "unavailable" response (consent is still
+    | enforced). In AWS these point at the deployed SQS queue + search Lambda.
+    | Credentials come from the EC2 instance role — no keys here.
+    |
+    */
+
+    'face' => [
+        'region' => env('FACE_AWS_REGION', env('AWS_DEFAULT_REGION', 'ap-southeast-2')),
+        'search_lambda' => env('FACE_SEARCH_LAMBDA_NAME'),
+        'index_queue_url' => env('FACE_INDEX_QUEUE_URL'),
+        'match_threshold' => (float) env('FACE_MATCH_THRESHOLD', 0.55),
+        'selfie_disk' => env('FACE_SELFIE_DISK', env('FILESYSTEM_DISK', 's3')),
+        'selfie_prefix' => env('FACE_SELFIE_PREFIX', 'tmp/selfies'),
+        // Explicit keys for local / CI only; blank in AWS (EC2 instance role).
+        'key' => env('AWS_ACCESS_KEY_ID'),
+        'secret' => env('AWS_SECRET_ACCESS_KEY'),
+        // Local Docker path: an HTTP face-worker instead of SQS/Lambda.
+        // When set, it takes precedence over the AWS transport above.
+        'local_url' => env('FACE_LOCAL_URL'),
+        // Where the worker fetches photos/selfies (the API's public /storage).
+        'image_base_url' => env('FACE_IMAGE_BASE_URL'),
+    ],
+
 ];

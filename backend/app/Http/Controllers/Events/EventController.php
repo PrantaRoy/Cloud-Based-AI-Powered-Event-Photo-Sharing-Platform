@@ -118,6 +118,7 @@ class EventController extends Controller
             $membership = $this->members->find($event->id, $request->user()->id);
             $resource->my_registered_at = $membership?->registered_at;
             $resource->my_status = $membership?->status;
+            $resource->my_consent_facial_matching = $membership !== null && $membership->consent_facial_matching === true;
 
             return $this->apiSuccess(
                 'Event fetched successfully',

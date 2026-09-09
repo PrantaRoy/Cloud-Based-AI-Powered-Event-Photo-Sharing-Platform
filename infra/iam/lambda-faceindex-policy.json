@@ -1,0 +1,45 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ReadUploadedPhotos",
+      "Effect": "Allow",
+      "Action": "s3:GetObject",
+      "Resource": "arn:aws:s3:::eventpro-media-ACCOUNT_ID/event-media/*"
+    },
+    {
+      "Sid": "WriteFaceRowsAndPhotoStatus",
+      "Effect": "Allow",
+      "Action": [
+        "dynamodb:Query",
+        "dynamodb:PutItem",
+        "dynamodb:UpdateItem",
+        "dynamodb:BatchWriteItem"
+      ],
+      "Resource": [
+        "arn:aws:dynamodb:ap-southeast-2:ACCOUNT_ID:table/EventPhotoPlatform-prod",
+        "arn:aws:dynamodb:ap-southeast-2:ACCOUNT_ID:table/EventPhotoPlatform-prod/index/*"
+      ]
+    },
+    {
+      "Sid": "ConsumeIndexQueue",
+      "Effect": "Allow",
+      "Action": [
+        "sqs:ReceiveMessage",
+        "sqs:DeleteMessage",
+        "sqs:GetQueueAttributes"
+      ],
+      "Resource": "arn:aws:sqs:ap-southeast-2:ACCOUNT_ID:FaceIndexQueue"
+    },
+    {
+      "Sid": "Logs",
+      "Effect": "Allow",
+      "Action": [
+        "logs:CreateLogGroup",
+        "logs:CreateLogStream",
+        "logs:PutLogEvents"
+      ],
+      "Resource": "arn:aws:logs:ap-southeast-2:ACCOUNT_ID:log-group:/aws/lambda/framefind-index:*"
+    }
+  ]
+}

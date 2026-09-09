@@ -26,6 +26,10 @@ class EventParticipent
 
     public bool $email_notify = false;
 
+    public ?bool $consent_facial_matching = null;
+
+    public ?string $consent_facial_matching_at = null;
+
     public ?string $created_at = null;
 
     /** @var array{id: int, name: string, email: string}|null */
@@ -44,6 +48,10 @@ class EventParticipent
         $member->registered_at = $item['registered_at'] ?? null;
         $member->approved_at = $item['approved_at'] ?? null;
         $member->email_notify = (bool) ($item['email_notify'] ?? false);
+        $member->consent_facial_matching = isset($item['consent_facial_matching'])
+            ? (bool) $item['consent_facial_matching']
+            : null;
+        $member->consent_facial_matching_at = $item['consent_facial_matching_at'] ?? null;
         $member->created_at = $item['created_at'] ?? null;
 
         if (isset($item['user_name'])) {

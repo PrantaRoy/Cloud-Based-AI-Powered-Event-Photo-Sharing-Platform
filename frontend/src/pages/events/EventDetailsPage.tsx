@@ -6,6 +6,7 @@ import { Spinner } from '../../components/common/Spinner'
 import { EmptyState } from '../../components/common/EmptyState'
 import { PhotoGrid } from '../../components/photos/PhotoGrid'
 import { PhotoUploadButton } from '../../components/photos/PhotoUploadButton'
+import { SelfieSearchPanel } from '../../components/photos/SelfieSearchPanel'
 import { EventShareButton } from '../../components/events/EventShareButton'
 import { getEvent } from '../../api/events'
 import { deleteEventPhoto, listEventPhotos, uploadEventPhoto } from '../../api/media'
@@ -149,6 +150,20 @@ export function EventDetailsPage() {
           />
         )}
       </div>
+
+      {(isApproved || canManage) && (
+        <div className="flex flex-col gap-3">
+          <h2 className="text-base font-semibold text-black">Find my photos</h2>
+          <p className="text-sm text-gray-600">
+            Upload a selfie to find the photos from this event that you appear in.
+          </p>
+          <SelfieSearchPanel
+            eventId={event.id}
+            consented={event.my_consent_facial_matching ?? false}
+            onConsentChange={load}
+          />
+        </div>
+      )}
     </div>
   )
 }

@@ -65,6 +65,8 @@ class Event
 
     public ?string $my_status = null;
 
+    public ?bool $my_consent_facial_matching = null;
+
     public ?float $distance_km = null;
 
     /**

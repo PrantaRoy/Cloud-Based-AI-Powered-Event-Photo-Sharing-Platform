@@ -1,0 +1,14 @@
+# Prebuilt dlib wheel (dlib-bin) — no 10-minute source compile, no build
+# toolchain in the image. `face_recognition` is then installed with
+# --no-deps (see the Dockerfile) so it doesn't drag in the `dlib` sdist.
+#
+# If a deployed Lambda ever fails to load dlib-bin (glibc / manylinux
+# mismatch), swap back to a source build: replace `dlib-bin` with
+# `dlib==19.24.2`, add the yum build deps, and set
+# ENV CMAKE_POLICY_VERSION_MINIMUM=3.5 before the pip install.
+dlib-bin==19.24.6
+face-recognition-models==0.3.0
+face_recognition==1.3.0
+numpy==1.26.4
+Pillow==10.4.0
+boto3==1.34.144

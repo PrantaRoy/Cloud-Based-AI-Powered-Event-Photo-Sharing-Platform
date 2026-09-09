@@ -39,6 +39,7 @@ class EventResource extends JsonResource
             'media_count' => $this->media_count,
             'my_registered_at' => $this->my_registered_at,
             'my_status' => $this->my_status,
+            'my_consent_facial_matching' => $this->my_consent_facial_matching,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];

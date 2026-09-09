@@ -6,6 +6,7 @@ import { ErrorBanner } from '../../components/common/ErrorBanner'
 import { EmptyState } from '../../components/common/EmptyState'
 import { PhotoGrid } from '../../components/photos/PhotoGrid'
 import { PhotoUploadButton } from '../../components/photos/PhotoUploadButton'
+import { SelfieSearchPanel } from '../../components/photos/SelfieSearchPanel'
 import { getEvent } from '../../api/events'
 import { joinEvent } from '../../api/participants'
 import { listEventPhotos, uploadEventPhoto } from '../../api/media'
@@ -83,6 +84,11 @@ export function EventUploadPage() {
     }
   }
 
+  function reloadEvent() {
+    if (!slug) return
+    getEvent(slug).then(setEvent).catch(() => { /* keep the current copy */ })
+  }
+
   if (isLoading) {
     return (
       <Shell>
@@ -142,6 +148,15 @@ export function EventUploadPage() {
           ) : (
             <PhotoGrid photos={photos} />
           )}
+
+          <div className="flex flex-col gap-2 border-t border-gray-200 pt-4">
+            <p className="text-xs uppercase tracking-wide text-gray-400">Find my photos</p>
+            <SelfieSearchPanel
+              eventId={event.id}
+              consented={event.my_consent_facial_matching ?? false}
+              onConsentChange={reloadEvent}
+            />
+          </div>
 
           <Link to={eventPath} className="text-sm text-black underline hover:no-underline">
             Open event page

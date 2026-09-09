@@ -5,7 +5,7 @@ set -euxo pipefail
 
 REGION=ap-southeast-2
 REPO=https://github.com/PrantaRoy/Ai-Powered-Event-Photo-AWS-Cloud-Project-.git
-BRANCH=feat/dynamodb-migration          # change once merged to main
+BRANCH=main
 APP_DIR=/opt/eventpro
 
 # --- FILL THESE IN from Step 3 (Cognito) and Step 7 (CloudFront) ----------

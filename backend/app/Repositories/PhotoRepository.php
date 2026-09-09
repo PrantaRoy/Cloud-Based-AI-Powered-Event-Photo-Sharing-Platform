@@ -66,8 +66,13 @@ class PhotoRepository extends BaseRepository
         return array_map(fn (array $i) => EventMedia::fromItem($i), $items);
     }
 
-    public function create(int $eventId, string $fileName, string $originalPath, int $uploadedBy): EventMedia
-    {
+    public function create(
+        int $eventId,
+        string $fileName,
+        string $originalPath,
+        int $uploadedBy,
+        string $processingStatus = 'completed',
+    ): EventMedia {
         $id = $this->nextId('photo');
         $now = $this->now();
 
@@ -83,7 +88,7 @@ class PhotoRepository extends BaseRepository
             'original_s3_path' => $originalPath,
             'thumbnail_s3_path' => null,
             'uploaded_by' => $uploadedBy,
-            'processing_status' => 'completed',
+            'processing_status' => $processingStatus,
             'created_at' => $now,
         ];
 
@@ -105,6 +110,9 @@ class PhotoRepository extends BaseRepository
         if ($raw !== null) {
             $this->dynamo->deleteItem((string) $raw['PK'], (string) $raw['SK']);
         }
+
+        // Cascade: a deleted photo must not leave its face embeddings behind.
+        app(FaceRepository::class)->deleteForPhoto($media->event_id, $media->id);
     }
 
     public function countForEvent(int $eventId): int

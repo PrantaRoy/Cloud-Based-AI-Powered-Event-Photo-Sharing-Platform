@@ -84,6 +84,18 @@
         "logs:DescribeLogStreams"
       ],
       "Resource": "arn:aws:logs:ap-southeast-2:ACCOUNT_ID:log-group:/eventpro/*"
+    },
+    {
+      "Sid": "FaceIndexEnqueue",
+      "Effect": "Allow",
+      "Action": "sqs:SendMessage",
+      "Resource": "arn:aws:sqs:ap-southeast-2:ACCOUNT_ID:FaceIndexQueue"
+    },
+    {
+      "Sid": "FaceSearchInvoke",
+      "Effect": "Allow",
+      "Action": "lambda:InvokeFunction",
+      "Resource": "arn:aws:lambda:ap-southeast-2:ACCOUNT_ID:function:framefind-search"
     }
   ]
 }

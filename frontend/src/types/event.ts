@@ -33,6 +33,9 @@ export interface EventResource {
   thumbnail_url: string | null
   my_registered_at: string | null
   my_status: 'pending' | 'approved' | 'rejected' | null
+  // Whether the caller has opted in to facial matching for this event.
+  // Captured on the first selfie search; false until then.
+  my_consent_facial_matching?: boolean
   organiser: UserSummary
   creator: UserSummary
   participants_count: number

@@ -65,6 +65,16 @@ class EventPolicy
         return $this->isOrganiser($user, $event) || $media->uploaded_by === $user->id;
     }
 
+    /**
+     * Selfie-based "find my photos" search — organisers, and approved
+     * participants (the same people who may upload).
+     */
+    public function searchPhotos(User $user, Event $event): bool
+    {
+        return $this->isOrganiser($user, $event)
+            || $this->members->isApprovedParticipant($event->id, $user->id);
+    }
+
     protected function isOrganiser(User $user, Event $event): bool
     {
         return $user->role === 'admin' || $user->id === $event->organiser_id;

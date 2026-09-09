@@ -14,6 +14,9 @@ class PhotoSearchRequest extends FormRequest
     {
         return [
             'selfie' => ['required', 'image', 'max:10240'],
+            // Biometric-matching opt-in. Required only on the first search
+            // (enforced in the controller once the stored flag is checked).
+            'consent' => ['sometimes', 'boolean'],
         ];
     }
 }

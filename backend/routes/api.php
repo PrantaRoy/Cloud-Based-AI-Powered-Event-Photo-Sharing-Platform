@@ -43,9 +43,11 @@ Route::middleware('auth:api')->group(function () {
     Route::post('events/{event}/photos', [EventMediaController::class, 'store'])->name('events.photos.store');
     Route::delete('events/{event}/photos/{media}', [EventMediaController::class, 'destroy'])->name('events.photos.destroy');
 
+    Route::post('events/{event}/photo-search', [PhotoSearchController::class, 'search'])->name('events.photo-search.run');
+    Route::get('events/{event}/photo-search/mine', [PhotoSearchController::class, 'mine'])->name('events.photo-search.mine');
+    Route::delete('events/{event}/photo-search/consent', [PhotoSearchController::class, 'withdrawConsent'])->name('events.photo-search.consent.withdraw');
+
     Route::apiResource('albums', AlbumController::class);
     Route::post('albums/{album}/photos', [AlbumController::class, 'attachMedia'])->name('albums.photos.attach');
     Route::delete('albums/{album}/photos/{media}', [AlbumController::class, 'detachMedia'])->name('albums.photos.detach');
-
-    Route::post('photo-search', [PhotoSearchController::class, 'search'])->name('photo-search');
 });

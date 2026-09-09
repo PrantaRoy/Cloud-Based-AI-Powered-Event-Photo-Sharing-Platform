@@ -1,0 +1,58 @@
+# Local override — auto-merged by `docker compose`.
+#
+#  * Host port 5173 is taken by another project, so the SPA is published on
+#    5174 (the container still serves Vite on 5173).  ->  http://localhost:5174
+#  * `face-worker` runs the real dlib / face_recognition code over HTTP so
+#    "Find my photos" works end-to-end with no AWS. First build pulls the
+#    prebuilt dlib wheel (~1-2 min, one-time).
+#
+# Delete this file to go back to the pure defaults in docker-compose.yml.
+
+services:
+  frontend:
+    ports: !override
+      - "5174:5173"
+
+  backend:
+    environment:
+      FRONTEND_URL: http://localhost:5174
+      # Route face indexing + search to the local worker instead of SQS/Lambda.
+      FACE_LOCAL_URL: http://face-worker:9000
+      # The worker reads images straight off the shared volume below (a path,
+      # not a URL) — so it never has to call back into single-threaded
+      # `artisan serve` mid-request.
+      FACE_IMAGE_BASE_URL: /photos
+      FACE_MATCH_THRESHOLD: "0.55"
+      PHP_CLI_SERVER_WORKERS: "6"
+    volumes:
+      - face-media:/app/storage/app/public
+
+  migrate:
+    environment:
+      FRONTEND_URL: http://localhost:5174
+
+  seed:
+    environment:
+      FRONTEND_URL: http://localhost:5174
+
+  face-worker:
+    build:
+      context: ./lambda/face-recognition
+      target: local
+    environment:
+      DYNAMODB_ENDPOINT: http://dynamodb:8000
+      DYNAMODB_TABLE: EventPhotoPlatform-local
+      AWS_DEFAULT_REGION: ap-southeast-2
+      AWS_ACCESS_KEY_ID: local
+      AWS_SECRET_ACCESS_KEY: local
+      FACE_MATCH_MODEL: hog
+      FACE_MATCH_THRESHOLD: "0.55"
+    depends_on:
+      - dynamodb
+    ports:
+      - "9000:9000"
+    volumes:
+      - face-media:/photos:ro
+
+volumes:
+  face-media:

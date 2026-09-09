@@ -76,6 +76,40 @@ class MemberRepository extends BaseRepository
         return EventParticipent::fromItem($item);
     }
 
+    /**
+     * Has this member granted consent for facial matching on this event?
+     * Consent is captured the first time they run a selfie search.
+     */
+    public function hasFacialMatchingConsent(int $eventId, int $userId): bool
+    {
+        $member = $this->find($eventId, $userId);
+
+        return $member !== null && $member->consent_facial_matching === true;
+    }
+
+    /**
+     * Record (or withdraw) facial-matching consent on the MEMBER# item.
+     * Stores a timestamp when granted; clears it when withdrawn.
+     */
+    public function setFacialMatchingConsent(int $eventId, int $userId, bool $granted): void
+    {
+        if ($granted) {
+            $this->dynamo->updateItem($this->eventPk($eventId), 'MEMBER#'.$userId, [
+                'consent_facial_matching' => true,
+                'consent_facial_matching_at' => $this->now(),
+            ]);
+
+            return;
+        }
+
+        $this->dynamo->updateItem(
+            $this->eventPk($eventId),
+            'MEMBER#'.$userId,
+            ['consent_facial_matching' => false],
+            ['consent_facial_matching_at'],
+        );
+    }
+
     public function isApprovedParticipant(int $eventId, int $userId): bool
     {
         $member = $this->find($eventId, $userId);
