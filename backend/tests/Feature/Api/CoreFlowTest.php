@@ -66,6 +66,32 @@ class CoreFlowTest extends TestCase
         $this->getJson("/api/events/{$slug}/photos")->assertOk()->assertJsonCount(1, 'data');
     }
 
+    public function test_only_joined_participants_can_view_event_photos(): void
+    {
+        Storage::fake('s3');
+        $this->actingAsUser(['role' => 'organiser']);
+
+        $slug = $this->postJson('/api/events', [
+            'name' => 'Members Only Gallery',
+            'event_date' => now()->addWeek()->toIso8601String(),
+            'venue' => 'Wellington',
+            'privacy' => 'public',
+        ])->assertCreated()->json('data.slug');
+
+        $this->postJson("/api/events/{$slug}/photos", ['photo' => UploadedFile::fake()->image('snap.jpg')])
+            ->assertCreated();
+
+        // A signed-in user who never joined can see the (public) event itself,
+        // but must not be able to list or otherwise reach its photo gallery.
+        $this->actingAsUser();
+        $this->getJson("/api/events/{$slug}")->assertOk();
+        $this->getJson("/api/events/{$slug}/photos")->assertForbidden();
+
+        // Joining (auto-approved here) grants access to the same endpoint.
+        $this->postJson("/api/events/{$slug}/participants")->assertCreated()->assertJsonPath('data.status', 'approved');
+        $this->getJson("/api/events/{$slug}/photos")->assertOk()->assertJsonCount(1, 'data');
+    }
+
     public function test_password_reset_happy_path(): void
     {
         $this->postJson('/api/register', [

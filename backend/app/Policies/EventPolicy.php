@@ -55,6 +55,17 @@ class EventPolicy
         return $this->isOrganiser($user, $event);
     }
 
+    /**
+     * Viewing the event's photo gallery requires actually being in it -
+     * being able to see the *event* (public/protected listing) is not
+     * enough, otherwise any signed-in user could browse photos of people
+     * who never agreed to share them with a non-participant.
+     */
+    public function viewMedia(User $user, Event $event): bool
+    {
+        return $this->isOrganiser($user, $event) || $this->members->isApprovedParticipant($event->id, $user->id);
+    }
+
     public function uploadMedia(User $user, Event $event): bool
     {
         return $this->isOrganiser($user, $event) || $this->members->isApprovedParticipant($event->id, $user->id);

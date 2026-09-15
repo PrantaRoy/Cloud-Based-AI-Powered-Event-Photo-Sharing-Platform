@@ -30,14 +30,25 @@ export function EventDetailsPage() {
     if (!id) return
     setLoading(true)
     setError(null)
-    Promise.all([getEvent(id), listEventPhotos(id)])
-      .then(([eventData, photosPayload]) => {
+    getEvent(id)
+      .then(async (eventData) => {
         setEvent(eventData)
-        setPhotos(normalizePaginated(photosPayload).items)
+
+        // Only fetch the gallery for people allowed to see it (organiser or
+        // an approved participant) - the backend now 403s everyone else, and
+        // there's no point round-tripping just to discard the result.
+        const canManage =
+          user !== null && (user.role === 'admin' || user.id === eventData.organiser?.id || user.id === eventData.creator?.id)
+        if (canManage || eventData.my_status === 'approved') {
+          const photosPayload = await listEventPhotos(id)
+          setPhotos(normalizePaginated(photosPayload).items)
+        } else {
+          setPhotos([])
+        }
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load event.'))
       .finally(() => setLoading(false))
-  }, [id])
+  }, [id, user])
 
   useEffect(() => {
     load()
@@ -140,14 +151,20 @@ export function EventDetailsPage() {
             <p className="text-sm text-gray-500">You can add photos once the organiser approves your request.</p>
           ) : null}
         </div>
-        {photos.length === 0 ? (
-          <EmptyState title="No photos yet" />
+        {canUpload ? (
+          photos.length === 0 ? (
+            <EmptyState title="No photos yet" />
+          ) : (
+            <PhotoGrid
+              photos={photos}
+              onDelete={handleDeletePhoto}
+              canDelete={(photo) => canManage || photo.uploaded_by.id === user?.id}
+            />
+          )
+        ) : isPending ? (
+          <p className="text-sm text-gray-500">Photos will be visible once your join request is approved.</p>
         ) : (
-          <PhotoGrid
-            photos={photos}
-            onDelete={handleDeletePhoto}
-            canDelete={(photo) => canManage || photo.uploaded_by.id === user?.id}
-          />
+          <p className="text-sm text-gray-500">Join this event to see its photos.</p>
         )}
       </div>
 

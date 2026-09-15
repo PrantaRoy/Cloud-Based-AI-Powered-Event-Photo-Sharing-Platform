@@ -25,7 +25,7 @@ class EventMediaController extends Controller
     public function index(Event $event): JsonResponse
     {
         try {
-            Gate::authorize('view', $event);
+            Gate::authorize('viewMedia', $event);
 
             $media = $this->photos->hydrateUploaders($this->photos->listForEvent($event->id));
 
