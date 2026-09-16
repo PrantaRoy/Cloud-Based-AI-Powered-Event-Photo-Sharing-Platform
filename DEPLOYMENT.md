@@ -1,7 +1,6 @@
 # EventPro — Deployment Guide
 
-A step-by-step deploy of EventPro, written for someone **new to AWS**. Every step
-says *what* you're making, *why*, *what it costs*, and *how to check it worked*.
+A step-by-step deploy of EventPro
 
 ---
 

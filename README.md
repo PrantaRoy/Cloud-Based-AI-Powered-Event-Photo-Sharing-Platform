@@ -91,6 +91,14 @@ cd backend
 php artisan migrate
 ```
 
+## Deployment
+
+Production deployment to AWS (EC2, DynamoDB, Cognito, S3, CloudFront, Lambda) is fully scripted:
+
+- [`DEPLOYMENT.md`](DEPLOYMENT.md) — full step-by-step deployment guide.
+- [`infra/`](infra/) — automation: `ec2-user-data.sh` (server bootstrap), `redeploy.sh` (pull + restart on the server), `docker-compose.prod.yml`, and IAM policy JSON files.
+- [`lambda/face-recognition/`](lambda/face-recognition/) — the face-matching Lambda container source.
+
 ## Troubleshooting
 
 - If the frontend cannot reach the API, confirm that the backend is running on port `8000` and that `VITE_API_URL` is correct.

@@ -1,0 +1,874 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  EventPro — full AWS stack (DynamoDB, S3, Cognito, Secrets Manager, IAM,
+  EC2+ALB, CloudWatch, CloudFront, and — once EnableFaceSearch=true — the
+  SQS/ECR/Lambda face-recognition pipeline). Deploy into whichever region
+  VpcId/PublicSubnetIds belong to; every other resource follows AWS::Region.
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: eventpro
+
+  LatestAmiId:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64
+
+  MyIpForSsh:
+    Type: String
+    Description: Your current public IP, CIDR format (e.g., 203.0.113.5/32) — for SSH access
+    AllowedPattern: '^(\d{1,3}\.){3}\d{1,3}/32$'
+
+  RepoUrl:
+    Type: String
+    Description: Git repository HTTPS URL
+    Default: https://github.com/PrantaRoy/Ai-Powered-Event-Photo-AWS-Cloud-Project-.git
+
+  RepoBranch:
+    Type: String
+    Default: main
+
+  InstanceType:
+    Type: String
+    Default: t3.micro
+
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: Default VPC's ID (aws ec2 describe-vpcs --filters Name=isDefault,Values=true to find it)
+
+  PublicSubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: At least 2 public subnets, in separate Availability Zones (for ALB). The EC2 instance launches into the first one.
+
+  EnableFaceSearch:
+    Type: String
+    Description: >
+      Leave 'false' on the first deploy. It stands up the ECR repo only, so
+      you can build+push the framefind-faces image (DEPLOYMENT.md Part 3.1).
+      Then update the stack with 'true' to create the SQS queue, both Lambda
+      functions, and their IAM roles. This two-step order exists because
+      CloudFormation cannot build/push the Docker image itself — the image
+      must already exist in ECR before the Lambda functions can be created.
+    AllowedValues: ['true', 'false']
+    Default: 'false'
+
+  FaceEcrImageTag:
+    Type: String
+    Description: Tag of the framefind-faces image in ECR to deploy to both Lambda functions.
+    Default: latest
+
+  BudgetAlertEmail:
+    Type: String
+    Description: >
+      Email notified as spend crosses each threshold of the NZD 50 academic
+      budget. AWS bills this account in USD (confirmed via Cost Explorer), so
+      the thresholds below are the USD equivalent of NZD 20/30/40/50 at the
+      exchange rate current when this template was written (~0.577) — revisit
+      BudgetThreshold1-4 later in the project if the rate has moved a lot.
+    AllowedPattern: '^[^@\s]+@[^@\s]+\.[^@\s]+$'
+
+  BudgetThreshold1:
+    Type: Number
+    Description: USD equivalent of NZD 15
+    Default: 8.66
+
+  BudgetThreshold2:
+    Type: Number
+    Description: USD equivalent of NZD 25
+    Default: 14.43
+
+  BudgetThreshold3:
+    Type: Number
+    Description: USD equivalent of NZD 30
+    Default: 17.31
+
+  BudgetThreshold4:
+    Type: Number
+    Description: USD equivalent of NZD 40
+    Default: 23.08
+
+  BudgetThreshold5:
+    Type: Number
+    Description: USD equivalent of NZD 50 (the full budget)
+    Default: 28.85
+
+Conditions:
+  FaceSearchEnabled: !Equals [!Ref EnableFaceSearch, 'true']
+
+Resources:
+
+  ###########################################################################
+  # DynamoDB
+  ###########################################################################
+  EventTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: EventPhotoPlatform-prod
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: PK
+          AttributeType: S
+        - AttributeName: SK
+          AttributeType: S
+        - AttributeName: GSI1PK
+          AttributeType: S
+        - AttributeName: GSI1SK
+          AttributeType: S
+      KeySchema:
+        - AttributeName: PK
+          KeyType: HASH
+        - AttributeName: SK
+          KeyType: RANGE
+      GlobalSecondaryIndexes:
+        - IndexName: GSI1
+          KeySchema:
+            - AttributeName: GSI1PK
+              KeyType: HASH
+            - AttributeName: GSI1SK
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+      Tags:
+        - Key: Project
+          Value: EventPro
+
+  ###########################################################################
+  # S3 — media (public-read photos, tmp/ selfies expire after 1 day) + spa
+  ###########################################################################
+  MediaBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub eventpro-media-${AWS::AccountId}
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        IgnorePublicAcls: true
+        BlockPublicPolicy: false
+        RestrictPublicBuckets: false
+      CorsConfiguration:
+        CorsRules:
+          - AllowedOrigins: ['*']
+            AllowedMethods: [GET, HEAD]
+            AllowedHeaders: ['*']
+            MaxAge: 3000
+      LifecycleConfiguration:
+        Rules:
+          - Id: expire-tmp-selfies
+            Status: Enabled
+            Prefix: tmp/
+            ExpirationInDays: 1
+      Tags:
+        - Key: Project
+          Value: EventPro
+
+  MediaBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref MediaBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: PublicReadGet
+            Effect: Allow
+            Principal: '*'
+            Action: s3:GetObject
+            Resource: !Sub arn:aws:s3:::${MediaBucket}/*
+
+  SpaBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub eventpro-spa-${AWS::AccountId}
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        IgnorePublicAcls: true
+        BlockPublicPolicy: true
+        RestrictPublicBuckets: true
+      Tags:
+        - Key: Project
+          Value: EventPro
+
+  SpaBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref SpaBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowCloudFrontOnly
+            Effect: Allow
+            Principal: { Service: cloudfront.amazonaws.com }
+            Action: s3:GetObject
+            Resource: !Sub arn:aws:s3:::${SpaBucket}/*
+            Condition:
+              StringEquals:
+                AWS:SourceArn: !Sub arn:aws:cloudfront::${AWS::AccountId}:distribution/${CloudFrontDistribution}
+
+  ###########################################################################
+  # Cognito
+  ###########################################################################
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Sub ${ProjectName}
+      AutoVerifiedAttributes: [email]
+      UsernameAttributes: [email]
+      Schema:
+        - Name: email
+          Required: true
+          Mutable: true
+        - Name: name
+          Required: true
+          Mutable: true
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireUppercase: true
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: true
+      AdminCreateUserConfig:
+        AllowAdminCreateUserOnly: false
+      UserPoolTags:
+        Project: EventPro
+
+  UserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: !Sub ${ProjectName}-api
+      UserPoolId: !Ref UserPool
+      GenerateSecret: true
+      ExplicitAuthFlows:
+        - ALLOW_ADMIN_USER_PASSWORD_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+
+  ###########################################################################
+  # Secrets Manager — names must match what the EC2 UserData script reads
+  ###########################################################################
+  AppKeySecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: eventpro/app-key
+      GenerateSecretString:
+        PasswordLength: 32
+        ExcludePunctuation: true
+      Tags:
+        - Key: Project
+          Value: EventPro
+
+  CognitoClientSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: eventpro/cognito-client-secret
+      SecretString: !GetAtt UserPoolClient.ClientSecret
+      Tags:
+        - Key: Project
+          Value: EventPro
+
+  ###########################################################################
+  # IAM — least-privilege EC2 role
+  ###########################################################################
+  EC2Role:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: EventPro-EC2-Role
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: { Service: ec2.amazonaws.com }
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: EventPro-EC2-Inline
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: DynamoSingleTable
+                Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:BatchGetItem
+                  - dynamodb:Query
+                  - dynamodb:Scan
+                  - dynamodb:PutItem
+                  - dynamodb:UpdateItem
+                  - dynamodb:DeleteItem
+                  - dynamodb:BatchWriteItem
+                  - dynamodb:ConditionCheckItem
+                Resource:
+                  - !GetAtt EventTable.Arn
+                  - !Sub ${EventTable.Arn}/index/*
+              - Sid: DynamoCreateTableOnce
+                Effect: Allow
+                Action:
+                  - dynamodb:CreateTable
+                  - dynamodb:DescribeTable
+                  - dynamodb:UpdateTimeToLive
+                  - dynamodb:DescribeTimeToLive
+                Resource: !GetAtt EventTable.Arn
+              - Sid: MediaBucketObjects
+                Effect: Allow
+                Action: [s3:GetObject, s3:PutObject, s3:DeleteObject]
+                Resource: !Sub arn:aws:s3:::${MediaBucket}/*
+              - Sid: MediaBucketList
+                Effect: Allow
+                Action: s3:ListBucket
+                Resource: !Sub arn:aws:s3:::${MediaBucket}
+              - Sid: CognitoAdmin
+                Effect: Allow
+                Action:
+                  - cognito-idp:AdminCreateUser
+                  - cognito-idp:AdminInitiateAuth
+                  - cognito-idp:AdminGetUser
+                  - cognito-idp:AdminSetUserPassword
+                  - cognito-idp:AdminConfirmSignUp
+                  - cognito-idp:AdminUpdateUserAttributes
+                  - cognito-idp:AdminUserGlobalSignOut
+                Resource: !GetAtt UserPool.Arn
+              - Sid: SecretsRead
+                Effect: Allow
+                Action: secretsmanager:GetSecretValue
+                Resource:
+                  - !Ref AppKeySecret
+                  - !Ref CognitoClientSecret
+              - Sid: CloudWatchLogs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/eventpro/*
+              - !If
+                - FaceSearchEnabled
+                - Sid: FaceIndexEnqueue
+                  Effect: Allow
+                  Action: sqs:SendMessage
+                  Resource: !GetAtt FaceIndexQueue.Arn
+                - !Ref AWS::NoValue
+              - !If
+                - FaceSearchEnabled
+                - Sid: FaceSearchInvoke
+                  Effect: Allow
+                  Action: lambda:InvokeFunction
+                  Resource: !GetAtt FaceSearchFunction.Arn
+                - !Ref AWS::NoValue
+
+  EC2InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      InstanceProfileName: EventPro-EC2-Profile
+      Roles: [!Ref EC2Role]
+
+  ###########################################################################
+  # Face recognition pipeline — ECR always; SQS/Lambda/roles gated behind
+  # EnableFaceSearch (see the parameter description for why).
+  ###########################################################################
+  FaceRecognitionRepo:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: framefind-faces
+      Tags:
+        - Key: Project
+          Value: EventPro
+
+  FaceIndexDLQ:
+    Type: AWS::SQS::Queue
+    Condition: FaceSearchEnabled
+    Properties:
+      QueueName: FaceIndexDLQ
+      Tags:
+        - Key: Project
+          Value: EventPro
+
+  FaceIndexQueue:
+    Type: AWS::SQS::Queue
+    Condition: FaceSearchEnabled
+    Properties:
+      QueueName: FaceIndexQueue
+      # >= 6x the index Lambda's 120s timeout.
+      VisibilityTimeout: 780
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt FaceIndexDLQ.Arn
+        maxReceiveCount: 3
+      Tags:
+        - Key: Project
+          Value: EventPro
+
+  FaceIndexLambdaRole:
+    Type: AWS::IAM::Role
+    Condition: FaceSearchEnabled
+    Properties:
+      RoleName: EventPro-FaceIndex-Role
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: { Service: lambda.amazonaws.com }
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: EventPro-FaceIndex-Inline
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: ReadUploadedPhotos
+                Effect: Allow
+                Action: s3:GetObject
+                Resource: !Sub arn:aws:s3:::${MediaBucket}/event-media/*
+              - Sid: WriteFaceRowsAndPhotoStatus
+                Effect: Allow
+                Action:
+                  - dynamodb:Query
+                  - dynamodb:PutItem
+                  - dynamodb:UpdateItem
+                  - dynamodb:BatchWriteItem
+                Resource:
+                  - !GetAtt EventTable.Arn
+                  - !Sub ${EventTable.Arn}/index/*
+              - Sid: ConsumeIndexQueue
+                Effect: Allow
+                Action:
+                  - sqs:ReceiveMessage
+                  - sqs:DeleteMessage
+                  - sqs:GetQueueAttributes
+                Resource: !GetAtt FaceIndexQueue.Arn
+              - Sid: Logs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/framefind-index:*
+
+  FaceSearchLambdaRole:
+    Type: AWS::IAM::Role
+    Condition: FaceSearchEnabled
+    Properties:
+      RoleName: EventPro-FaceSearch-Role
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: { Service: lambda.amazonaws.com }
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: EventPro-FaceSearch-Inline
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: ReadAndDeleteSelfie
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:DeleteObject
+                Resource: !Sub arn:aws:s3:::${MediaBucket}/tmp/*
+              - Sid: ReadFaceRowsOnly
+                Effect: Allow
+                Action: dynamodb:Query
+                Resource: !GetAtt EventTable.Arn
+              - Sid: Logs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/framefind-search:*
+
+  FaceIndexFunction:
+    Type: AWS::Lambda::Function
+    Condition: FaceSearchEnabled
+    Properties:
+      FunctionName: framefind-index
+      PackageType: Image
+      Architectures: [x86_64]
+      Code:
+        ImageUri: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${FaceRecognitionRepo}:${FaceEcrImageTag}
+      ImageConfig:
+        Command: ['face_index_handler.handler']
+      Role: !GetAtt FaceIndexLambdaRole.Arn
+      Timeout: 120
+      MemorySize: 2048
+      ReservedConcurrentExecutions: 5
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref EventTable
+          FACE_MATCH_MODEL: hog
+      Tags:
+        - Key: Project
+          Value: EventPro
+
+  FaceSearchFunction:
+    Type: AWS::Lambda::Function
+    Condition: FaceSearchEnabled
+    Properties:
+      FunctionName: framefind-search
+      PackageType: Image
+      Architectures: [x86_64]
+      Code:
+        ImageUri: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${FaceRecognitionRepo}:${FaceEcrImageTag}
+      ImageConfig:
+        Command: ['face_search_handler.handler']
+      Role: !GetAtt FaceSearchLambdaRole.Arn
+      Timeout: 60
+      MemorySize: 2048
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref EventTable
+          FACE_MATCH_THRESHOLD: '0.55'
+      Tags:
+        - Key: Project
+          Value: EventPro
+
+  FaceIndexEventSourceMapping:
+    Type: AWS::Lambda::EventSourceMapping
+    Condition: FaceSearchEnabled
+    Properties:
+      FunctionName: !Ref FaceIndexFunction
+      EventSourceArn: !GetAtt FaceIndexQueue.Arn
+      BatchSize: 1
+
+  ###########################################################################
+  # Networking
+  ###########################################################################
+  AlbSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: EventPro load balancer
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+      Tags: [{ Key: Project, Value: EventPro }]
+
+  Ec2SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: EventPro API server
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 8000
+          ToPort: 8000
+          SourceSecurityGroupId: !Ref AlbSecurityGroup
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: !Ref MyIpForSsh
+      Tags: [{ Key: Project, Value: EventPro }]
+
+  # CFN-generated key pairs store the private key in SSM Parameter Store
+  # (see the RetrievePrivateKeyCommand output).
+  AppKeyPair:
+    Type: AWS::EC2::KeyPair
+    Properties:
+      KeyName: eventpro-key
+      Tags: [{ Key: Project, Value: EventPro }]
+
+  ###########################################################################
+  # EC2
+  ###########################################################################
+  ApiInstance:
+    Type: AWS::EC2::Instance
+    DependsOn: EC2InstanceProfile
+    Properties:
+      InstanceType: !Ref InstanceType
+      ImageId: !Ref LatestAmiId
+      KeyName: !Ref AppKeyPair
+      IamInstanceProfile: !Ref EC2InstanceProfile
+      SubnetId: !Select [0, !Ref PublicSubnetIds]
+      SecurityGroupIds: [!Ref Ec2SecurityGroup]
+      MetadataOptions:
+        HttpTokens: required
+        HttpPutResponseHopLimit: 2
+        HttpEndpoint: enabled
+      Tags:
+        - Key: Name
+          Value: eventpro-api
+        - Key: Project
+          Value: EventPro
+      UserData:
+        Fn::Base64:
+          Fn::Sub:
+            - |
+              #!/bin/bash
+              set -euxo pipefail
+
+              # t3.micro has 1 GB RAM; composer/docker build needs headroom.
+              if [ ! -f /swapfile ]; then
+                dd if=/dev/zero of=/swapfile bs=1M count=2048
+                chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile
+                echo '/swapfile none swap sw 0 0' >> /etc/fstab
+              fi
+
+              dnf install -y docker git
+              systemctl enable --now docker
+              usermod -aG docker ec2-user
+              mkdir -p /usr/local/lib/docker/cli-plugins
+              curl -SL https://github.com/docker/compose/releases/download/v2.29.7/docker-compose-linux-x86_64 \
+                -o /usr/local/lib/docker/cli-plugins/docker-compose
+              chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
+
+              rm -rf /opt/eventpro
+              git clone --branch ${RepoBranch} --depth 1 ${RepoUrl} /opt/eventpro
+              cd /opt/eventpro/infra
+
+              APP_KEY=$(aws secretsmanager get-secret-value --secret-id eventpro/app-key \
+                --region ${AWS::Region} --query SecretString --output text)
+              COGNITO_SECRET=$(aws secretsmanager get-secret-value --secret-id eventpro/cognito-client-secret \
+                --region ${AWS::Region} --query SecretString --output text)
+
+              cat > .env <<EOF
+              APP_NAME=EventPro
+              APP_ENV=production
+              APP_DEBUG=false
+              APP_KEY=${!APP_KEY}
+              JWT_SECRET=unused-in-cognito-mode
+              COGNITO_REGION=${AWS::Region}
+              COGNITO_USER_POOL_ID=${UserPool}
+              COGNITO_CLIENT_ID=${UserPoolClient}
+              COGNITO_CLIENT_SECRET=${!COGNITO_SECRET}
+              APP_URL=http://${LoadBalancer.DNSName}
+              FRONTEND_URL=http://${LoadBalancer.DNSName}
+              LOG_CHANNEL=stderr
+              LOG_LEVEL=warning
+              SESSION_DRIVER=array
+              CACHE_STORE=file
+              QUEUE_CONNECTION=sync
+              QUEUE_FAILED_DRIVER=null
+              BROADCAST_CONNECTION=log
+              MAIL_MAILER=log
+              AWS_DEFAULT_REGION=${AWS::Region}
+              AWS_USE_PATH_STYLE_ENDPOINT=false
+              DYNAMODB_TABLE=${EventTable}
+              DYNAMODB_REGION=${AWS::Region}
+              FILESYSTEM_DISK=s3
+              AWS_BUCKET=${MediaBucket}
+              AWS_URL=
+              FACE_SEARCH_LAMBDA_NAME=${FaceSearchLambdaName}
+              FACE_INDEX_QUEUE_URL=${FaceIndexQueueUrl}
+              FACE_MATCH_THRESHOLD=0.55
+              EOF
+
+              docker compose -f docker-compose.prod.yml up -d --build
+              docker compose -f docker-compose.prod.yml exec -T api php artisan dynamo:create-table
+            - FaceSearchLambdaName: !If [FaceSearchEnabled, !Ref FaceSearchFunction, '']
+              FaceIndexQueueUrl: !If [FaceSearchEnabled, !Ref FaceIndexQueue, '']
+
+  ###########################################################################
+  # ALB + Target Group + Listener
+  ###########################################################################
+  TargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: eventpro-tg
+      Protocol: HTTP
+      Port: 8000
+      VpcId: !Ref VpcId
+      TargetType: instance
+      Targets:
+        - Id: !Ref ApiInstance
+      HealthCheckPath: /up
+      HealthCheckIntervalSeconds: 15
+
+  LoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: eventpro-alb
+      Type: application
+      Subnets: !Ref PublicSubnetIds
+      SecurityGroups: [!Ref AlbSecurityGroup]
+      Tags: [{ Key: Project, Value: EventPro }]
+
+  Listener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref LoadBalancer
+      Protocol: HTTP
+      Port: 80
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref TargetGroup
+
+  ###########################################################################
+  # CloudWatch Alarms
+  ###########################################################################
+  CpuAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: eventpro-ec2-cpu
+      Namespace: AWS/EC2
+      MetricName: CPUUtilization
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 85
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: InstanceId
+          Value: !Ref ApiInstance
+
+  FiveXXAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: eventpro-alb-5xx
+      Namespace: AWS/ApplicationELB
+      MetricName: HTTPCode_Target_5XX_Count
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 5
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: LoadBalancer
+          Value: !GetAtt LoadBalancer.LoadBalancerFullName
+
+  ###########################################################################
+  # Budget — NZD 50 academic cap, tracked in USD (this account's billing
+  # currency). Covers the whole project (TimeUnit: ANNUALLY, not monthly —
+  # a $50 project budget shouldn't reset every month), with an email alert
+  # each time real spend crosses NZD 20 / 30 / 40 / 50 (converted to USD).
+  ###########################################################################
+  AcademicBudget:
+    Type: AWS::Budgets::Budget
+    Properties:
+      Budget:
+        BudgetName: !Sub ${ProjectName}-academic-budget
+        BudgetType: COST
+        TimeUnit: ANNUALLY
+        BudgetLimit:
+          Amount: !Ref BudgetThreshold5
+          Unit: USD
+      NotificationsWithSubscribers:
+        - Notification:
+            NotificationType: ACTUAL
+            ComparisonOperator: GREATER_THAN
+            Threshold: !Ref BudgetThreshold1
+            ThresholdType: ABSOLUTE_VALUE
+          Subscribers:
+            - SubscriptionType: EMAIL
+              Address: !Ref BudgetAlertEmail
+        - Notification:
+            NotificationType: ACTUAL
+            ComparisonOperator: GREATER_THAN
+            Threshold: !Ref BudgetThreshold2
+            ThresholdType: ABSOLUTE_VALUE
+          Subscribers:
+            - SubscriptionType: EMAIL
+              Address: !Ref BudgetAlertEmail
+        - Notification:
+            NotificationType: ACTUAL
+            ComparisonOperator: GREATER_THAN
+            Threshold: !Ref BudgetThreshold3
+            ThresholdType: ABSOLUTE_VALUE
+          Subscribers:
+            - SubscriptionType: EMAIL
+              Address: !Ref BudgetAlertEmail
+        - Notification:
+            NotificationType: ACTUAL
+            ComparisonOperator: GREATER_THAN
+            Threshold: !Ref BudgetThreshold4
+            ThresholdType: ABSOLUTE_VALUE
+          Subscribers:
+            - SubscriptionType: EMAIL
+              Address: !Ref BudgetAlertEmail
+        - Notification:
+            NotificationType: ACTUAL
+            ComparisonOperator: GREATER_THAN
+            Threshold: !Ref BudgetThreshold5
+            ThresholdType: ABSOLUTE_VALUE
+          Subscribers:
+            - SubscriptionType: EMAIL
+              Address: !Ref BudgetAlertEmail
+
+  ###########################################################################
+  # CloudFront — SPA (S3, OAC) + /api/* (ALB)
+  ###########################################################################
+  OriginAccessControl:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: eventpro-oac
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  CloudFrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        DefaultRootObject: index.html
+        Origins:
+          - Id: SpaOrigin
+            DomainName: !GetAtt SpaBucket.RegionalDomainName
+            OriginAccessControlId: !GetAtt OriginAccessControl.Id
+            S3OriginConfig:
+              OriginAccessIdentity: ''
+          - Id: ApiOrigin
+            DomainName: !GetAtt LoadBalancer.DNSName
+            CustomOriginConfig:
+              OriginProtocolPolicy: http-only
+        DefaultCacheBehavior:
+          TargetOriginId: SpaOrigin
+          ViewerProtocolPolicy: redirect-to-https
+          CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6   # AWS managed: CachingOptimized
+        CacheBehaviors:
+          - PathPattern: /api/*
+            TargetOriginId: ApiOrigin
+            ViewerProtocolPolicy: redirect-to-https
+            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad   # AWS managed: CachingDisabled
+            OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac  # AWS managed: AllViewerExceptHostHeader
+            AllowedMethods: [GET, HEAD, OPTIONS, PUT, PATCH, POST, DELETE]
+        CustomErrorResponses:
+          - ErrorCode: 403
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+          - ErrorCode: 404
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+      Tags:
+        - Key: Project
+          Value: EventPro
+
+Outputs:
+  AlbDnsName:
+    Value: !GetAtt LoadBalancer.DNSName
+
+  CloudFrontDomain:
+    Value: !GetAtt CloudFrontDistribution.DomainName
+
+  UserPoolId:
+    Value: !Ref UserPool
+
+  UserPoolClientId:
+    Value: !Ref UserPoolClient
+
+  Ec2InstanceId:
+    Value: !Ref ApiInstance
+
+  MediaBucketName:
+    Value: !Ref MediaBucket
+
+  SpaBucketName:
+    Value: !Ref SpaBucket
+
+  EcrRepositoryUri:
+    Description: Push the framefind-faces image here (DEPLOYMENT.md Part 3.1) before setting EnableFaceSearch=true
+    Value: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${FaceRecognitionRepo}
+
+  FaceIndexQueueUrl:
+    Condition: FaceSearchEnabled
+    Value: !Ref FaceIndexQueue
+
+  RetrievePrivateKeyCommand:
+    Description:  SSH-private-key retrieval command (run on your local machine, not the EC2 instance)
+    Value: !Sub >-
+      aws ssm get-parameter --name /ec2/keypair/${AppKeyPair.KeyPairId}
+      --with-decryption --query Parameter.Value --output text > ~/.ssh/eventpro-key.pem
+      && chmod 400 ~/.ssh/eventpro-key.pem
