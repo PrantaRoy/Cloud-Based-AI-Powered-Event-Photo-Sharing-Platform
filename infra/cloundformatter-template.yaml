@@ -149,8 +149,8 @@ Resources:
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         IgnorePublicAcls: true
-        BlockPublicPolicy: false
-        RestrictPublicBuckets: false
+        BlockPublicPolicy: true
+        RestrictPublicBuckets: true
       CorsConfiguration:
         CorsRules:
           - AllowedOrigins: ['*']
@@ -174,11 +174,14 @@ Resources:
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
-          - Sid: PublicReadGet
+          - Sid: AllowCloudFrontOnly
             Effect: Allow
-            Principal: '*'
+            Principal: { Service: cloudfront.amazonaws.com }
             Action: s3:GetObject
             Resource: !Sub arn:aws:s3:::${MediaBucket}/*
+            Condition:
+              StringEquals:
+                AWS:SourceArn: !Sub arn:aws:cloudfront::${AWS::AccountId}:distribution/${CloudFrontDistribution}
 
   SpaBucket:
     Type: AWS::S3::Bucket
@@ -810,6 +813,11 @@ Resources:
             OriginAccessControlId: !GetAtt OriginAccessControl.Id
             S3OriginConfig:
               OriginAccessIdentity: ''
+          - Id: MediaOrigin
+            DomainName: !GetAtt MediaBucket.RegionalDomainName
+            OriginAccessControlId: !GetAtt OriginAccessControl.Id
+            S3OriginConfig:
+              OriginAccessIdentity: ''
           - Id: ApiOrigin
             DomainName: !GetAtt LoadBalancer.DNSName
             CustomOriginConfig:
@@ -825,6 +833,14 @@ Resources:
             CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad   # AWS managed: CachingDisabled
             OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac  # AWS managed: AllViewerExceptHostHeader
             AllowedMethods: [GET, HEAD, OPTIONS, PUT, PATCH, POST, DELETE]
+          - PathPattern: /event-media/*
+            TargetOriginId: MediaOrigin
+            ViewerProtocolPolicy: redirect-to-https
+            CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6   # AWS managed: CachingOptimized
+          - PathPattern: /profile-photos/*
+            TargetOriginId: MediaOrigin
+            ViewerProtocolPolicy: redirect-to-https
+            CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6   # AWS managed: CachingOptimized
         CustomErrorResponses:
           - ErrorCode: 403
             ResponseCode: 200
