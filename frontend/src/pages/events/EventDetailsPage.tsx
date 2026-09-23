@@ -146,7 +146,7 @@ export function EventDetailsPage() {
         <div className="flex items-center justify-between">
           <h2 className="text-base font-semibold text-black">Photos</h2>
           {canUpload ? (
-            <PhotoUploadButton onUpload={handleUpload} />
+            <PhotoUploadButton onUpload={handleUpload} multiple />
           ) : isPending ? (
             <p className="text-sm text-gray-500">You can add photos once the organiser approves your request.</p>
           ) : null}

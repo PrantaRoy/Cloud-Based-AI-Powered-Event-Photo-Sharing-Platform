@@ -141,7 +141,7 @@ export function EventUploadPage() {
             <h1 className="text-lg font-semibold text-black">{event.name}</h1>
           </div>
 
-          <PhotoUploadButton onUpload={handleUpload} />
+          <PhotoUploadButton onUpload={handleUpload} multiple />
 
           {photos.length === 0 ? (
             <EmptyState title="No photos yet" />
