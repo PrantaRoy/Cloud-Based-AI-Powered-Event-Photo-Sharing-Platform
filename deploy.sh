@@ -28,7 +28,7 @@ REPO_URL="https://github.com/PrantaRoy/Ai-Powered-Event-Photo-AWS-Cloud-Project-
 REPO_BRANCH="main"
 KEY_NAME="eventpro-key"
 SSH_KEY="$HOME/.ssh/${KEY_NAME}.pem"
-FACE_IMAGE_DIR="face-recognition"     # <-- change this to the real Dockerfile path in your repo
+FACE_IMAGE_DIR="lambda/face-recognition"    # <-- change this to the real Dockerfile path in your repo
 FACE_IMAGE_NAME="framefind-faces"
 IMAGE_TAG="latest"
 BUDGET_EMAIL="${BUDGET_EMAIL:?run: export BUDGET_EMAIL=you@example.com, then re-run this script}"
@@ -178,7 +178,7 @@ push_image() {
 
   aws ecr get-login-password --region "$AWS_REGION" \
     | docker login --username AWS --password-stdin "${account_id}.dkr.ecr.${AWS_REGION}.amazonaws.com"
-  docker build -t "${FACE_IMAGE_NAME}:${IMAGE_TAG}" "$FACE_IMAGE_DIR"
+  docker build --platform linux/amd64 -t "${FACE_IMAGE_NAME}:${IMAGE_TAG}" "$FACE_IMAGE_DIR"
   docker tag "${FACE_IMAGE_NAME}:${IMAGE_TAG}" "${ecr_uri}:${IMAGE_TAG}"
   docker push "${ecr_uri}:${IMAGE_TAG}"
   ok "Push complete: ${ecr_uri}:${IMAGE_TAG}"
