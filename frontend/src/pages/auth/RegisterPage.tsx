@@ -112,7 +112,7 @@ export function RegisterPage() {
             onChange={(e) => setPasswordConfirmation(e.target.value)}
             error={fieldError('password_confirmation')}
           />
-          <p className="text-xs text-gray-500">Use at least 8 characters.</p>
+          <p className="text-xs text-gray-500">Use at least 12 characters, with uppercase, lowercase, a number, and a symbol.</p>
           <Button type="submit" disabled={submitting}>
             {submitting ? 'Creating account…' : 'Create account'}
           </Button>
