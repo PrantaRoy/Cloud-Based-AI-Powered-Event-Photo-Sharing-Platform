@@ -4,7 +4,34 @@ An event photo-sharing platform where attendees upload photos, then find the
 ones they're in using selfie-based face matching. Built with Laravel (API),
 React (SPA), and a serverless face-recognition pipeline on AWS.
 
+## How Frame & Find works
+
+![How Frame & Find works](docs/images/how-it-works.png)
+
+An event organiser creates an event and prints/shares its QR code. From
+there, the flow is:
+
+1. **Scan QR code** — Attendees scan the code at the event entrance. It opens
+   a per-event upload page (`/e/:slug/upload`).
+2. **Create account** — A quick sign-up (or login) via Cognito, so uploaded
+   photos and matches can be tied to the attendee.
+3. **Upload photos** — Anyone at the event can contribute photos taken during
+   it; they're stored in the event's private S3 media bucket.
+4. **Upload a selfie** — The attendee uploads one selfie of themselves. It's
+   used only to compute a face embedding and is **deleted after 24 hours** —
+   the raw image is never kept.
+5. **AI finds you** — An asynchronous face-recognition pipeline (SQS →
+   Lambda, dlib-based) indexes every uploaded photo and matches faces against
+   the attendee's embedding automatically, with no manual tagging.
+6. **View & download** — The attendee sees and downloads only the photos
+   they were matched in.
+
+Privacy is baked into the pipeline: selfies are transient, matching is
+opt-in, and each attendee only ever gets access to their own matched photos.
+
 ## Architecture at a glance
+
+![EventPro AWS architecture](docs/images/aws-architecture.png)
 
 ```
 User (browser)
@@ -19,6 +46,26 @@ CloudFront (CDN)
                      ├──▶ Secrets Manager (app key, Cognito secret)
                      └──▶ SQS ──▶ Lambda (face index/search, dlib) ──▶ DynamoDB
 ```
+
+The diagram breaks the system into five zones:
+
+- **Frontend & delivery** — CloudFront serves the React SPA from an S3
+  bucket and proxies `/api/*` requests to the backend; a second, private S3
+  bucket holds event media, accessible only via CloudFront's Origin Access
+  Control (OAC).
+- **Application layer** — An Application Load Balancer routes API traffic to
+  the EC2 instance running the Laravel API.
+- **Authentication** — Amazon Cognito issues and validates JWTs; no
+  passwords are stored by the app itself.
+- **Data layer** — DynamoDB holds all application data (events, photos, face
+  embeddings, match results).
+- **Asynchronous AI processing** — New/updated media triggers a message on
+  the `FaceIndexQueue` (SQS); a Lambda function indexes or searches faces and
+  writes embeddings/results back to DynamoDB. Failed jobs move to a dead
+  letter queue (`FaceIndexDLQ`) after retries so they don't get lost.
+- **Security, monitoring & cost** — IAM scopes access per-resource, Secrets
+  Manager holds the app key and Cognito secret, CloudWatch collects logs and
+  alarms, and AWS Budgets sends spend alerts.
 
 Full write-up: see `docs/ARCHITECTURE.md` (or ask in the project chat history —
 every design decision is explained there, including *why* each service was
@@ -144,6 +191,45 @@ by `deploy.sh app-fix` in production (values pulled from Secrets Manager and
 the CloudFormation stack outputs) and by `docker-compose.yml`'s `x-api-env`
 block locally. You should not need to hand-edit it, but the full reference is
 in `infra/backend.env.prod.example`.
+
+## User manual
+
+### For organisers
+
+1. **Sign up / log in** and create an event (name, date, venue — venue
+   autocomplete is powered by OpenStreetMap Nominatim, no API key needed).
+2. Open the event and generate its **QR code** from the event page. Print it
+   or display it at the venue entrance.
+3. During/after the event, monitor uploaded photos from the event dashboard.
+4. Set the event's status as it progresses (e.g. `active` while it's listed
+   and open for uploads, `ongoing` while it's happening) so attendees see the
+   right state.
+
+### For attendees
+
+1. **Scan the event's QR code** with your phone camera. It opens
+   `https://<your-domain>/e/<event-slug>/upload`.
+2. **Create an account or log in** — this is quick and only needed once.
+   Scanning the QR code automatically joins you to that event.
+3. **Upload photos** you took at the event. Everyone who joins can
+   contribute; photos are stored privately and only served through
+   CloudFront.
+4. **Upload one selfie** so the system can find you in the crowd. This
+   image is used only to compute a face embedding and is **automatically
+   deleted after 24 hours** — it is never stored long-term or shared.
+5. Wait for matching to run in the background (the SQS → Lambda pipeline
+   indexes new photos and searches for your face automatically — no action
+   needed).
+6. **View and download your photos** from the event page — you'll only see
+   photos you were matched in, not the full event album.
+
+### For developers
+
+- Local development, deployment, environment variables, and troubleshooting
+  are documented in the sections above.
+- The two diagrams in `docs/images/` (`how-it-works.png` and
+  `aws-architecture.png`) are the canonical references for the product flow
+  and infrastructure — update them if either changes materially.
 
 ## Troubleshooting
 
