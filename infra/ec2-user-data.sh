@@ -4,7 +4,7 @@
 set -euxo pipefail
 
 REGION=ap-southeast-2
-REPO=https://github.com/PrantaRoy/Ai-Powered-Event-Photo-AWS-Cloud-Project-.git
+REPO=https://github.com/PrantaRoy/Cloud-Based-AI-Powered-Event-Photo-Sharing-Platform
 BRANCH=main
 APP_DIR=/opt/eventpro
 

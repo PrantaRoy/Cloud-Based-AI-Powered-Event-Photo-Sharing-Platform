@@ -24,7 +24,7 @@ export AWS_DEFAULT_REGION=us-east-1
 
 STACK_NAME="eventpro-production"
 TEMPLATE="infra/cloundformatter-template.yaml"
-REPO_URL="https://github.com/PrantaRoy/Ai-Powered-Event-Photo-AWS-Cloud-Project-.git"
+REPO_URL="https://github.com/PrantaRoy/Cloud-Based-AI-Powered-Event-Photo-Sharing-Platform"
 REPO_BRANCH="main"
 KEY_NAME="eventpro-key"
 SSH_KEY="$HOME/.ssh/${KEY_NAME}.pem"
